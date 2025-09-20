@@ -20,5 +20,6 @@ main = do
   -- contents2021 <- Schemas.parse2021 (fullPath "2021.csv")
   -- contents2022 <- Schemas.parse2022 (fullPath "2022.csv")
   -- contents2023 <- Schemas.parse2023 (fullPath "2023.csv")
-  contents2024 <- Schemas.parse2024 (fullPath "2024.csv")
-  forM_ contents2024 $ \row -> print row
+  -- contents2024 <- Schemas.parse2024 (fullPath "2024.csv")
+  contents2025 <- Schemas.parse2025 (fullPath "2025.csv")
+  forM_ contents2025 $ \row -> print row

@@ -13,6 +13,7 @@ module Schemas
     parse2022,
     parse2023,
     parse2024,
+    parse2025,
   )
 where
 
@@ -275,6 +276,7 @@ parse2023 :: String -> IO [Normalized]
 parse2023 path = map normalize2022 <$> readCsvFile path
 
 -- 2024 (Addition of wing !)
+
 newtype Normalized2024 = Normalized2024 {normalize2024 :: Normalized}
 
 instance FromNamedRecord Normalized2024 where
@@ -298,3 +300,29 @@ instance FromNamedRecord Normalized2024 where
 
 parse2024 :: String -> IO [Normalized]
 parse2024 path = map normalize2024 <$> readCsvFile path
+
+-- 2025
+-- ,Date,Sport,Hours,Avg (kts),Gust (kts),Kite,Wing,Board Type,Foil,Board,Location,Type,Comments
+newtype Normalized2025 = Normalized2025 {normalize2025 :: Normalized}
+
+instance FromNamedRecord Normalized2025 where
+  parseNamedRecord r = do
+    normalized <-
+      Normalized
+        <$> (r .: "Date" <&> parseDate)
+        <*> (r .: "Sport" <&> normalizeSport)
+        <*> r .: "Hours"
+        <*> r .: "Avg (kts)"
+        <*> r .: "Gust (kts)"
+        <*> r .: "Kite"
+        <*> r .: "Wing"
+        <*> (r .: "Type" <&> normalizeSeshType)
+        <*> (r .: "Board Type")
+        <*> r .: "Foil"
+        <*> r .: "Board"
+        <*> r .: "Location"
+        <*> r .: "Comments"
+    pure $ Normalized2025 normalized
+
+parse2025 :: String -> IO [Normalized]
+parse2025 path = map normalize2025 <$> readCsvFile path
