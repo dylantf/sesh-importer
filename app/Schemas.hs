@@ -5,6 +5,7 @@ module Schemas
     parse2014,
     parse2015,
     parse2016,
+    parse2017,
   )
 where
 
@@ -202,3 +203,27 @@ instance FromNamedRecord Normalized2016 where
 
 parse2016 :: String -> IO [Normalized]
 parse2016 path = map normalize2016 <$> readCsvFile path
+
+-- 2017 (same as 2016!)
+
+newtype Normalized2017 = Normalized2017 {normalize2017 :: Normalized}
+
+instance FromNamedRecord Normalized2017 where
+  parseNamedRecord r = do
+    normalized <-
+      Normalized
+        <$> (r .: "Date" <&> parseDate)
+        <*> (r .: "Sport" <&> normalizeSport)
+        <*> r .: "Hours"
+        <*> r .: "Lull (kts)"
+        <*> r .: "Gust (kts)"
+        <*> r .: "Kite"
+        <*> pure Nothing
+        <*> (r .: "Type" <&> normalizeSeshType)
+        <*> (r .: "Board")
+        <*> r .: "Location"
+        <*> r .: "Comments"
+    pure $ Normalized2017 normalized
+
+parse2017 :: String -> IO [Normalized]
+parse2017 path = map normalize2017 <$> readCsvFile path
