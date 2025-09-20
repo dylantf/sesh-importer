@@ -6,6 +6,10 @@ module Schemas
     parse2015,
     parse2016,
     parse2017,
+    parse2018,
+    parse2019,
+    parse2020,
+    parse2021,
   )
 where
 
@@ -22,6 +26,8 @@ data Sport
   | Snowboarding
   | MountainBiking
   | Hiking
+  | Running
+  | Paragliding
   | Surfing
   | WingFoiling
   | Parawinging
@@ -63,11 +69,13 @@ normalizeSport s = case s of
   "Snowboarding" -> Snowboarding
   "Mountain Biking" -> MountainBiking
   "Hiking" -> Hiking
+  "Running" -> Running
+  "Paragliding" -> Paragliding
   "Surfing" -> Surfing
   "Surf" -> Surfing
-  "Wing Foiling" -> WingFoiling
+  "Wing foiling" -> WingFoiling
   "Parawinging" -> Parawinging
-  _ -> error $ "Unknown sport: " ++ s
+  _ -> error $ "Unhandled sport: " ++ s
 
 normalizeSeshType :: Maybe String -> Maybe SeshType
 normalizeSeshType s = case s of
@@ -180,50 +188,41 @@ parse2015 :: String -> IO [Normalized]
 parse2015 path = map normalize2015 <$> readCsvFile path
 
 -- 2016
--- Date,Sport,Hours,Lull (kts),Gust (kts),Kite,Type,Board,Location,Comments,
 
 newtype Normalized2016 = Normalized2016 {normalize2016 :: Normalized}
 
+normalize2016Record :: NamedRecord -> Parser Normalized
+normalize2016Record r = do
+  Normalized
+    <$> (r .: "Date" <&> parseDate)
+    <*> (r .: "Sport" <&> normalizeSport)
+    <*> r .: "Hours"
+    <*> r .: "Lull (kts)"
+    <*> r .: "Gust (kts)"
+    <*> r .: "Kite"
+    <*> pure Nothing
+    <*> (r .: "Type" <&> normalizeSeshType)
+    <*> (r .: "Board")
+    <*> r .: "Location"
+    <*> r .: "Comments"
+
 instance FromNamedRecord Normalized2016 where
-  parseNamedRecord r = do
-    normalized <-
-      Normalized
-        <$> (r .: "Date" <&> parseDate)
-        <*> (r .: "Sport" <&> normalizeSport)
-        <*> r .: "Hours"
-        <*> r .: "Lull (kts)"
-        <*> r .: "Gust (kts)"
-        <*> r .: "Kite"
-        <*> pure Nothing
-        <*> (r .: "Type" <&> normalizeSeshType)
-        <*> (r .: "Board")
-        <*> r .: "Location"
-        <*> r .: "Comments"
-    pure $ Normalized2016 normalized
+  parseNamedRecord r = Normalized2016 <$> normalize2016Record r
 
 parse2016 :: String -> IO [Normalized]
 parse2016 path = map normalize2016 <$> readCsvFile path
 
--- 2017 (same as 2016!)
-
-newtype Normalized2017 = Normalized2017 {normalize2017 :: Normalized}
-
-instance FromNamedRecord Normalized2017 where
-  parseNamedRecord r = do
-    normalized <-
-      Normalized
-        <$> (r .: "Date" <&> parseDate)
-        <*> (r .: "Sport" <&> normalizeSport)
-        <*> r .: "Hours"
-        <*> r .: "Lull (kts)"
-        <*> r .: "Gust (kts)"
-        <*> r .: "Kite"
-        <*> pure Nothing
-        <*> (r .: "Type" <&> normalizeSeshType)
-        <*> (r .: "Board")
-        <*> r .: "Location"
-        <*> r .: "Comments"
-    pure $ Normalized2017 normalized
-
 parse2017 :: String -> IO [Normalized]
-parse2017 path = map normalize2017 <$> readCsvFile path
+parse2017 path = map normalize2016 <$> readCsvFile path
+
+parse2018 :: String -> IO [Normalized]
+parse2018 path = map normalize2016 <$> readCsvFile path
+
+parse2019 :: String -> IO [Normalized]
+parse2019 path = map normalize2016 <$> readCsvFile path
+
+parse2020 :: String -> IO [Normalized]
+parse2020 path = map normalize2016 <$> readCsvFile path
+
+parse2021 :: String -> IO [Normalized]
+parse2021 path = map normalize2016 <$> readCsvFile path
