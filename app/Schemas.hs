@@ -2,6 +2,7 @@ module Schemas (Normalized, parse2012, parse2013, parse2014) where
 
 import Data.ByteString.Lazy qualified as BL
 import Data.Csv
+import Data.Functor ((<&>))
 import Data.Time
 import Data.Vector qualified as V
 
@@ -44,11 +45,6 @@ readCsvFile path = do
     Left err -> error $ "Error parsing CSV: " ++ err
     Right (_, rows) -> pure $ V.toList rows
 
-parseCsvFile :: (FromNamedRecord a) => String -> (a -> Schemas.Normalized) -> IO [Schemas.Normalized]
-parseCsvFile path normalizeFn = do
-  contents <- readCsvFile path
-  pure $ normalizeFn <$> contents
-
 normalizeSport :: String -> Sport
 normalizeSport s = case s of
   "Kiteboarding" -> Kiteboarding
@@ -77,138 +73,67 @@ parseDate dateStr =
     Just day -> day
     Nothing -> error $ "Could not parse date: " ++ dateStr
 
--- 2012
+newtype Normalized2012 = Normalized2012 {normalize2012 :: Normalized}
 
-data CsvRow2012 = CsvRow2012
-  { date_2012 :: String,
-    sport_2012 :: String,
-    hours_2012 :: Double,
-    windAvg_2012 :: Int,
-    windGust_2012 :: Int,
-    kiteSize_2012 :: String,
-    seshType_2012 :: String,
-    comments_2012 :: String
-  }
-  deriving (Show)
-
-instance FromNamedRecord CsvRow2012 where
-  parseNamedRecord r =
-    CsvRow2012
-      <$> r .: "Date"
-      <*> r .: "Sport"
-      <*> r .: "Hours"
-      <*> r .: "Lull (kn)"
-      <*> r .: "Gust (kn)"
-      <*> r .: "Kite Size"
-      <*> r .: "Type"
-      <*> r .: "Comments"
-
-normalize2012 :: CsvRow2012 -> Normalized
-normalize2012 row =
-  Normalized
-    { date = parseDate $ date_2012 row,
-      sport = normalizeSport $ sport_2012 row,
-      hours = hours_2012 row,
-      windAvg = Just (windAvg_2012 row),
-      windGust = Just (windGust_2012 row),
-      kiteSize = Just (kiteSize_2012 row),
-      wingSize = Nothing,
-      seshType = normalizeSeshType $ Just $ seshType_2012 row,
-      location = Nothing,
-      comments = comments_2012 row
-    }
+instance FromNamedRecord Normalized2012 where
+  parseNamedRecord r = do
+    normalized <-
+      Normalized
+        <$> (r .: "Date" <&> parseDate)
+        <*> (normalizeSport <$> r .: "Sport")
+        <*> r .: "Hours"
+        <*> (Just <$> r .: "Lull (kn)")
+        <*> (Just <$> r .: "Gust (kn)")
+        <*> (Just <$> r .: "Kite Size")
+        <*> pure Nothing
+        <*> (normalizeSeshType . Just <$> r .: "Type")
+        <*> pure Nothing
+        <*> r .: "Comments"
+    pure $ Normalized2012 normalized
 
 parse2012 :: String -> IO [Normalized]
-parse2012 path = parseCsvFile path normalize2012
+parse2012 path = map normalize2012 <$> readCsvFile path
 
--- 2013
--- CSV Header: Date,Sport,Hours,Lull,Gust,Kite,Type,Comments
+newtype Normalized2013 = Normalized2013 {normalize2013 :: Normalized}
 
-data CsvRow2013 = CsvRow2013
-  { date_2013 :: String,
-    sport_2013 :: String,
-    hours_2013 :: Double,
-    windAvg_2013 :: Maybe Int,
-    windGust_2013 :: Maybe Int,
-    kiteSize_2013 :: Maybe String,
-    seshType_2013 :: Maybe String,
-    comments_2013 :: String
-  }
-  deriving (Show)
-
-instance FromNamedRecord CsvRow2013 where
-  parseNamedRecord r =
-    CsvRow2013
-      <$> r .: "Date"
-      <*> r .: "Sport"
-      <*> r .: "Hours"
-      <*> r .: "Lull"
-      <*> r .: "Gust"
-      <*> r .: "Kite"
-      <*> r .: "Type"
-      <*> r .: "Comments"
-
-normalize2013 :: CsvRow2013 -> Normalized
-normalize2013 row =
-  Normalized
-    { date = parseDate $ date_2013 row,
-      sport = normalizeSport $ sport_2013 row,
-      hours = hours_2013 row,
-      windAvg = windAvg_2013 row,
-      windGust = windGust_2013 row,
-      kiteSize = kiteSize_2013 row,
-      wingSize = Nothing,
-      seshType = normalizeSeshType $ seshType_2013 row,
-      location = Nothing,
-      comments = comments_2013 row
-    }
+instance FromNamedRecord Normalized2013 where
+  parseNamedRecord r = do
+    normalized <-
+      Normalized
+        <$> (r .: "Date" <&> parseDate)
+        <*> (r .: "Sport" <&> normalizeSport)
+        <*> r .: "Hours"
+        <*> r .: "Lull"
+        <*> r .: "Gust"
+        <*> r .: "Kite"
+        <*> pure Nothing
+        <*> (r .: "Type" <&> normalizeSeshType)
+        <*> pure Nothing
+        <*> r .: "Comments"
+    pure $ Normalized2013 normalized
 
 parse2013 :: String -> IO [Normalized]
-parse2013 path = parseCsvFile path normalize2013
+parse2013 path = map normalize2013 <$> readCsvFile path
 
 -- 2014
--- Headers: Day,Sport,Hours,Lull (kn),Gust (kn),Kite Size,Type,Location,Comments
 
-data CsvRow2014 = CsvRow2014
-  { date_2014 :: String,
-    sport_2014 :: String,
-    hours_2014 :: Double,
-    windAvg_2014 :: Maybe Int,
-    windGust_2014 :: Maybe Int,
-    kiteSize_2014 :: Maybe String,
-    seshType_2014 :: Maybe String,
-    location_2014 :: Maybe String,
-    comments_2014 :: String
-  }
-  deriving (Show)
+newtype Normalized2014 = Normalized2014 {normalize2014 :: Normalized}
 
-instance FromNamedRecord CsvRow2014 where
-  parseNamedRecord r =
-    CsvRow2014
-      <$> r .: "Day"
-      <*> r .: "Sport"
-      <*> r .: "Hours"
-      <*> r .: "Lull (kn)"
-      <*> r .: "Gust (kn)"
-      <*> r .: "Kite Size"
-      <*> r .: "Type"
-      <*> r .: "Location"
-      <*> r .: "Comments"
-
-normalize2014 :: CsvRow2014 -> Normalized
-normalize2014 row =
-  Normalized
-    { date = parseDate $ date_2014 row,
-      sport = normalizeSport $ sport_2014 row,
-      hours = hours_2014 row,
-      windAvg = windAvg_2014 row,
-      windGust = windGust_2014 row,
-      kiteSize = kiteSize_2014 row,
-      wingSize = Nothing,
-      seshType = normalizeSeshType $ seshType_2014 row,
-      location = location_2014 row,
-      comments = comments_2014 row
-    }
+instance FromNamedRecord Normalized2014 where
+  parseNamedRecord r = do
+    normalized <-
+      Normalized
+        <$> (r .: "Day" <&> parseDate)
+        <*> (r .: "Sport" <&> normalizeSport)
+        <*> r .: "Hours"
+        <*> r .: "Lull (kn)"
+        <*> r .: "Gust (kn)"
+        <*> r .: "Kite Size"
+        <*> pure Nothing
+        <*> (r .: "Type" <&> normalizeSeshType)
+        <*> r .: "Location"
+        <*> r .: "Comments"
+    pure $ Normalized2014 normalized
 
 parse2014 :: String -> IO [Normalized]
-parse2014 path = parseCsvFile path normalize2014
+parse2014 path = map normalize2014 <$> readCsvFile path
