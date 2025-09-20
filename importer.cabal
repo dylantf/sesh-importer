@@ -17,8 +17,13 @@ common warnings
 executable importer
   import: warnings
   main-is: Main.hs
-  -- other-modules:
-  default-extensions: OverloadedStrings
+  other-modules:
+    Schemas
+
+  default-extensions:
+    OverloadedStrings
+    TypeApplications
+
   build-depends:
     base ^>=4.18.3.0,
     bytestring,
