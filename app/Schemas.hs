@@ -1,4 +1,4 @@
-module Schemas (Normalized, parse2012, parse2013) where
+module Schemas (Normalized, parse2012, parse2013, parse2014) where
 
 import Data.ByteString.Lazy qualified as BL
 import Data.Csv
@@ -10,6 +10,8 @@ data Sport
   | SUP
   | Skiing
   | Snowboarding
+  | MountainBiking
+  | Hiking
   | Surfing
   | WingFoiling
   | Parawinging
@@ -30,6 +32,7 @@ data Normalized = Normalized
     kiteSize :: Maybe String,
     wingSize :: Maybe String,
     seshType :: Maybe SeshType,
+    location :: Maybe String,
     comments :: String
   }
   deriving (Show)
@@ -52,6 +55,8 @@ normalizeSport s = case s of
   "SUP" -> SUP
   "Skiing" -> Skiing
   "Snowboarding" -> Snowboarding
+  "Mountain Biking" -> MountainBiking
+  "Hiking" -> Hiking
   "Surfing" -> Surfing
   "Surf" -> Surfing
   "Wing Foiling" -> WingFoiling
@@ -109,6 +114,7 @@ normalize2012 row =
       kiteSize = Just (kiteSize_2012 row),
       wingSize = Nothing,
       seshType = normalizeSeshType $ Just $ seshType_2012 row,
+      location = Nothing,
       comments = comments_2012 row
     }
 
@@ -153,8 +159,56 @@ normalize2013 row =
       kiteSize = kiteSize_2013 row,
       wingSize = Nothing,
       seshType = normalizeSeshType $ seshType_2013 row,
+      location = Nothing,
       comments = comments_2013 row
     }
 
 parse2013 :: String -> IO [Normalized]
 parse2013 path = parseCsvFile path normalize2013
+
+-- 2014
+-- Headers: Day,Sport,Hours,Lull (kn),Gust (kn),Kite Size,Type,Location,Comments
+
+data CsvRow2014 = CsvRow2014
+  { date_2014 :: String,
+    sport_2014 :: String,
+    hours_2014 :: Double,
+    windAvg_2014 :: Maybe Int,
+    windGust_2014 :: Maybe Int,
+    kiteSize_2014 :: Maybe String,
+    seshType_2014 :: Maybe String,
+    location_2014 :: Maybe String,
+    comments_2014 :: String
+  }
+  deriving (Show)
+
+instance FromNamedRecord CsvRow2014 where
+  parseNamedRecord r =
+    CsvRow2014
+      <$> r .: "Day"
+      <*> r .: "Sport"
+      <*> r .: "Hours"
+      <*> r .: "Lull (kn)"
+      <*> r .: "Gust (kn)"
+      <*> r .: "Kite Size"
+      <*> r .: "Type"
+      <*> r .: "Location"
+      <*> r .: "Comments"
+
+normalize2014 :: CsvRow2014 -> Normalized
+normalize2014 row =
+  Normalized
+    { date = parseDate $ date_2014 row,
+      sport = normalizeSport $ sport_2014 row,
+      hours = hours_2014 row,
+      windAvg = windAvg_2014 row,
+      windGust = windGust_2014 row,
+      kiteSize = kiteSize_2014 row,
+      wingSize = Nothing,
+      seshType = normalizeSeshType $ seshType_2014 row,
+      location = location_2014 row,
+      comments = comments_2014 row
+    }
+
+parse2014 :: String -> IO [Normalized]
+parse2014 path = parseCsvFile path normalize2014
