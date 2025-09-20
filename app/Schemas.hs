@@ -12,6 +12,7 @@ module Schemas
     parse2021,
     parse2022,
     parse2023,
+    parse2024,
   )
 where
 
@@ -242,8 +243,6 @@ parse2021 :: String -> IO [Normalized]
 parse2021 path = map normalize2016 <$> readCsvFile path
 
 -- 2022 (Addition of foil and foilboard)
--- ,Date,Sport,Hours,Avg (kts),Gust (kts),Kite,Type,Board Type,Foil,Foil Board,Location,Comments
--- ,Date,Sport,Hours,Avg (kts),Gust (kts),Kite,Board Type,Foil,Foil Board,Location,Type,Comments,
 
 newtype Normalized2022 = Normalized2022 {normalize2022 :: Normalized}
 
@@ -274,3 +273,28 @@ parse2022 path = map normalize2022 <$> readCsvFile path
 
 parse2023 :: String -> IO [Normalized]
 parse2023 path = map normalize2022 <$> readCsvFile path
+
+-- 2024 (Addition of wing !)
+newtype Normalized2024 = Normalized2024 {normalize2024 :: Normalized}
+
+instance FromNamedRecord Normalized2024 where
+  parseNamedRecord r = do
+    normalized <-
+      Normalized
+        <$> (r .: "Date" <&> parseDate)
+        <*> (r .: "Sport" <&> normalizeSport)
+        <*> r .: "Hours"
+        <*> r .: "Avg (kts)"
+        <*> r .: "Gust (kts)"
+        <*> r .: "Kite"
+        <*> r .: "Wing"
+        <*> (r .: "Type" <&> normalizeSeshType)
+        <*> (r .: "Board Type")
+        <*> r .: "Foil"
+        <*> r .: "Foil Board" -- I only tracked foilboards for 2024
+        <*> r .: "Location"
+        <*> r .: "Comments"
+    pure $ Normalized2024 normalized
+
+parse2024 :: String -> IO [Normalized]
+parse2024 path = map normalize2024 <$> readCsvFile path
