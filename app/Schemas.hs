@@ -1,4 +1,4 @@
-module Schemas (Normalized, parse2012, parse2013, parse2014) where
+module Schemas (Normalized, parse2012, parse2013, parse2014, parse2015) where
 
 import Data.ByteString.Lazy qualified as BL
 import Data.Csv
@@ -73,6 +73,8 @@ parseDate dateStr =
     Just day -> day
     Nothing -> error $ "Could not parse date: " ++ dateStr
 
+-- 2012
+
 newtype Normalized2012 = Normalized2012 {normalize2012 :: Normalized}
 
 instance FromNamedRecord Normalized2012 where
@@ -93,6 +95,8 @@ instance FromNamedRecord Normalized2012 where
 
 parse2012 :: String -> IO [Normalized]
 parse2012 path = map normalize2012 <$> readCsvFile path
+
+-- 2013
 
 newtype Normalized2013 = Normalized2013 {normalize2013 :: Normalized}
 
@@ -137,3 +141,26 @@ instance FromNamedRecord Normalized2014 where
 
 parse2014 :: String -> IO [Normalized]
 parse2014 path = map normalize2014 <$> readCsvFile path
+
+-- 2015
+
+newtype Normalized2015 = Normalized2015 {normalize2015 :: Normalized}
+
+instance FromNamedRecord Normalized2015 where
+  parseNamedRecord r = do
+    normalized <-
+      Normalized
+        <$> (r .: "Date" <&> parseDate)
+        <*> (r .: "Sport" <&> normalizeSport)
+        <*> r .: "Hours"
+        <*> r .: "Lull"
+        <*> r .: "Gust"
+        <*> r .: "Kite"
+        <*> pure Nothing
+        <*> (r .: "Type" <&> normalizeSeshType)
+        <*> r .: "Location"
+        <*> r .: "Comments"
+    pure $ Normalized2015 normalized
+
+parse2015 :: String -> IO [Normalized]
+parse2015 path = map normalize2015 <$> readCsvFile path
