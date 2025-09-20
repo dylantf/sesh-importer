@@ -10,6 +10,7 @@ module Schemas
     parse2019,
     parse2020,
     parse2021,
+    parse2022,
   )
 where
 
@@ -39,6 +40,14 @@ data SeshType
   | Roundwinder
   deriving (Show)
 
+data BoardType
+  = Twintip
+  | Surfboard
+  | Hydrofoil
+  | Skis
+  | Snowboard
+  deriving (Show)
+
 data Normalized = Normalized
   { date :: Day,
     sport :: Sport,
@@ -48,7 +57,8 @@ data Normalized = Normalized
     kiteSize :: Maybe String,
     wingSize :: Maybe String,
     seshType :: Maybe SeshType,
-    boardType :: Maybe String,
+    boardType :: Maybe BoardType,
+    board :: Maybe String,
     location :: Maybe String,
     comments :: String
   }
@@ -75,7 +85,7 @@ normalizeSport s = case s of
   "Surf" -> Surfing
   "Wing foiling" -> WingFoiling
   "Parawinging" -> Parawinging
-  _ -> error $ "Unhandled sport: " ++ s
+  _ -> error $ "Unhandled sport: `" ++ s ++ "`"
 
 normalizeSeshType :: Maybe String -> Maybe SeshType
 normalizeSeshType s = case s of
@@ -84,6 +94,16 @@ normalizeSeshType s = case s of
   Just "Downwinder" -> Just Downwinder
   Just "Roundwinder" -> Just Roundwinder
   Just other -> error $ "Unhandled session type: " ++ other
+
+normalizeBoardType :: Maybe String -> Maybe BoardType
+normalizeBoardType b = case b of
+  Nothing -> Nothing
+  Just "Twintip" -> Just Twintip
+  Just "Surfboard" -> Just Surfboard
+  Just "Hydrofoil" -> Just Hydrofoil
+  Just "Skis" -> Just Skis
+  Just "Snowboard" -> Just Snowboard
+  Just other -> error $ "Unhandled board type: `" ++ other ++ "`"
 
 parseDate :: String -> Day
 parseDate dateStr =
@@ -107,6 +127,7 @@ instance FromNamedRecord Normalized2012 where
         <*> (Just <$> r .: "Kite Size")
         <*> pure Nothing
         <*> (normalizeSeshType . Just <$> r .: "Type")
+        <*> pure Nothing
         <*> pure Nothing
         <*> pure Nothing
         <*> r .: "Comments"
@@ -133,6 +154,7 @@ instance FromNamedRecord Normalized2013 where
         <*> (r .: "Type" <&> normalizeSeshType)
         <*> pure Nothing
         <*> pure Nothing
+        <*> pure Nothing
         <*> r .: "Comments"
     pure $ Normalized2013 normalized
 
@@ -155,6 +177,7 @@ instance FromNamedRecord Normalized2014 where
         <*> r .: "Kite Size"
         <*> pure Nothing
         <*> (r .: "Type" <&> normalizeSeshType)
+        <*> pure Nothing
         <*> pure Nothing
         <*> r .: "Location"
         <*> r .: "Comments"
@@ -180,6 +203,7 @@ instance FromNamedRecord Normalized2015 where
         <*> pure Nothing
         <*> (r .: "Type" <&> normalizeSeshType)
         <*> pure Nothing
+        <*> pure Nothing
         <*> r .: "Location"
         <*> r .: "Comments"
     pure $ Normalized2015 normalized
@@ -202,7 +226,8 @@ normalize2016Record r = do
     <*> r .: "Kite"
     <*> pure Nothing
     <*> (r .: "Type" <&> normalizeSeshType)
-    <*> (r .: "Board")
+    <*> (r .: "Board" <&> normalizeBoardType)
+    <*> pure Nothing
     <*> r .: "Location"
     <*> r .: "Comments"
 
@@ -226,3 +251,29 @@ parse2020 path = map normalize2016 <$> readCsvFile path
 
 parse2021 :: String -> IO [Normalized]
 parse2021 path = map normalize2016 <$> readCsvFile path
+
+-- 2022 (Addition of foil and foilboard)
+-- ,Date,Sport,Hours,Avg (kts),Gust (kts),Kite,Type,Board Type,Foil,Foil Board,Location,Comments
+
+newtype Normalized2022 = Normalized2022 {normalize2022 :: Normalized}
+
+instance FromNamedRecord Normalized2022 where
+  parseNamedRecord r = do
+    normalized <-
+      Normalized
+        <$> (r .: "Date" <&> parseDate)
+        <*> (r .: "Sport" <&> normalizeSport)
+        <*> r .: "Hours"
+        <*> r .: "Avg (kts)"
+        <*> r .: "Gust (kts)"
+        <*> r .: "Kite"
+        <*> pure Nothing
+        <*> (r .: "Type" <&> normalizeSeshType)
+        <*> (r .: "Board Type" <&> normalizeBoardType)
+        <*> r .: "Foil Board" -- I only tracked foilboards for 2022
+        <*> r .: "Location"
+        <*> r .: "Comments"
+    pure $ Normalized2022 normalized
+
+parse2022 :: String -> IO [Normalized]
+parse2022 path = map normalize2022 <$> readCsvFile path
