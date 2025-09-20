@@ -1,4 +1,12 @@
-module Schemas (Normalized, parse2012, parse2013, parse2014, parse2015) where
+module Schemas
+  ( Normalized,
+    parse2012,
+    parse2013,
+    parse2014,
+    parse2015,
+    parse2016,
+  )
+where
 
 import Data.ByteString.Lazy qualified as BL
 import Data.Csv
@@ -33,6 +41,7 @@ data Normalized = Normalized
     kiteSize :: Maybe String,
     wingSize :: Maybe String,
     seshType :: Maybe SeshType,
+    boardType :: Maybe String,
     location :: Maybe String,
     comments :: String
   }
@@ -90,6 +99,7 @@ instance FromNamedRecord Normalized2012 where
         <*> pure Nothing
         <*> (normalizeSeshType . Just <$> r .: "Type")
         <*> pure Nothing
+        <*> pure Nothing
         <*> r .: "Comments"
     pure $ Normalized2012 normalized
 
@@ -113,6 +123,7 @@ instance FromNamedRecord Normalized2013 where
         <*> pure Nothing
         <*> (r .: "Type" <&> normalizeSeshType)
         <*> pure Nothing
+        <*> pure Nothing
         <*> r .: "Comments"
     pure $ Normalized2013 normalized
 
@@ -135,6 +146,7 @@ instance FromNamedRecord Normalized2014 where
         <*> r .: "Kite Size"
         <*> pure Nothing
         <*> (r .: "Type" <&> normalizeSeshType)
+        <*> pure Nothing
         <*> r .: "Location"
         <*> r .: "Comments"
     pure $ Normalized2014 normalized
@@ -158,9 +170,35 @@ instance FromNamedRecord Normalized2015 where
         <*> r .: "Kite"
         <*> pure Nothing
         <*> (r .: "Type" <&> normalizeSeshType)
+        <*> pure Nothing
         <*> r .: "Location"
         <*> r .: "Comments"
     pure $ Normalized2015 normalized
 
 parse2015 :: String -> IO [Normalized]
 parse2015 path = map normalize2015 <$> readCsvFile path
+
+-- 2016
+-- Date,Sport,Hours,Lull (kts),Gust (kts),Kite,Type,Board,Location,Comments,
+
+newtype Normalized2016 = Normalized2016 {normalize2016 :: Normalized}
+
+instance FromNamedRecord Normalized2016 where
+  parseNamedRecord r = do
+    normalized <-
+      Normalized
+        <$> (r .: "Date" <&> parseDate)
+        <*> (r .: "Sport" <&> normalizeSport)
+        <*> r .: "Hours"
+        <*> r .: "Lull (kts)"
+        <*> r .: "Gust (kts)"
+        <*> r .: "Kite"
+        <*> pure Nothing
+        <*> (r .: "Type" <&> normalizeSeshType)
+        <*> (r .: "Board")
+        <*> r .: "Location"
+        <*> r .: "Comments"
+    pure $ Normalized2016 normalized
+
+parse2016 :: String -> IO [Normalized]
+parse2016 path = map normalize2016 <$> readCsvFile path
