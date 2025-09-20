@@ -1,0 +1,30 @@
+cabal-version: 3.8
+name: importer
+version: 0.1.0.0
+-- synopsis:
+-- description:
+license: NONE
+author: dylantf
+maintainer: dylantf@github
+-- copyright:
+build-type: Simple
+extra-doc-files: README.md
+
+-- extra-source-files:
+common warnings
+  ghc-options: -Wall
+
+executable importer
+  import: warnings
+  main-is: Main.hs
+  -- other-modules:
+  default-extensions: OverloadedStrings
+  build-depends:
+    base ^>=4.18.3.0,
+    bytestring,
+    cassava,
+    time,
+    vector,
+
+  hs-source-dirs: app
+  default-language: GHC2021
