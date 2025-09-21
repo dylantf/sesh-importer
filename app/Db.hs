@@ -1,16 +1,9 @@
-module Db (determineHydrofoilIds) where
+module Db (determineBoardIds) where
 
 import Data.List.Split
 import Data.Maybe (mapMaybe, maybeToList)
 import Data.Time (Day)
 import Parsers (Normalized (..), Sport (..))
-
--- { id: 26, user_id: dylan, type: "foilboard", name: "Slingshot Alien Air", size: "40L", active: false }
--- { id: 27, user_id: dylan, type: "foilboard", name: "Liquid Force Galaxy", size: "4'2", active: false }
--- { id: 28, user_id: dylan, type: "foilboard", name: "Groove Skate", size: "120", active: true }
--- { id: 29, user_id: dylan, type: "foilboard", name: "Rocket Wing v2", size: "85L", active: false }
--- { id: 30, user_id: dylan, type: "foilboard", name: "Flying Fish", size: "40L", active: false }
--- { id: 31, user_id: dylan, type: "foilboard", name: "Rocket Wing v2", size: "60L", active: true }
 
 -- { id: 32, user_id: dylan, type: "wing", name: "Cabrinha Crosswing X2", size: "6m", active: false }
 -- { id: 33, user_id: dylan, type: "wing", name: "Ozone WASP v2", size: "5m", active: false }
@@ -80,12 +73,32 @@ determineHydrofoilId (day, foilName) = case (day, foilName) of
   (_, Just "Veloce 890") -> Just 28
   _ -> Nothing
 
+usesFoil :: Normalized -> Bool
+usesFoil row = case boardType row of
+  Just bt -> "Hydrofoil" `elem` splitValues bt
+  Nothing -> False
+
 determineHydrofoilIds :: Normalized -> [Int]
 determineHydrofoilIds row =
-  case (usesFoil, date row, foil row) of
+  case (usesFoil row, date row, foil row) of
     (False, _, _) -> []
     (True, d, f) -> maybeToList $ determineHydrofoilId (d, f)
-  where
-    usesFoil = case boardType row of
-      Just bt -> "Hydrofoil" `elem` splitValues bt
-      Nothing -> False
+
+determineBoardId :: (Day, Maybe String) -> Maybe Int
+determineBoardId (day, boardName) = case (day, boardName) of
+  (_, Just "Groove Skate") -> Just 28
+  (d, Nothing) | after "2022-08-10" d -> Just 28
+  (_, Just "Rocket v2 85L") -> Just 29
+  (_, Just "Rocket v2 60L") -> Just 31
+  (_, Just "Rocket 60L") -> Just 31
+  (_, Just "Flying Fish 40L") -> Just 30
+  (_, Just "LF Galaxy") -> Just 27
+  (d, Nothing) | between ("2017-06-24", "2022-08-09") d -> Just 27
+  (d, Nothing) | before "2017-06-23" d -> Just 26
+  _ -> Nothing
+
+-- I only care about foilboards, throw away others
+determineBoardIds :: Normalized -> [Int]
+determineBoardIds row
+  | usesFoil row = maybeToList $ determineBoardId (date row, board row)
+  | otherwise = []
