@@ -270,7 +270,7 @@ parse2022 :: String -> IO [Normalized]
 parse2022 path = map normalize2022 <$> readCsvFile path
 
 -- 2023
--- The column order is different are flipped around but have the same names
+-- The column order is different but have the same names as 2022
 
 parse2023 :: String -> IO [Normalized]
 parse2023 path = map normalize2022 <$> readCsvFile path

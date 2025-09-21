@@ -3,23 +3,26 @@ module Main where
 import Control.Monad (forM_)
 import Schemas qualified
 
-fullPath :: String -> String
-fullPath filename = "/home/dylan/Desktop/Sesh Import/" ++ filename
+importDir :: String -> String
+importDir filename = "/home/dylan/Desktop/Sesh Import/" ++ filename
 
 main :: IO ()
 main = do
-  -- contents2012 <- Schemas.parse2012 (fullPath "2012.csv")
-  -- contents2013 <- Schemas.parse2013 (fullPath "2013.csv")
-  -- contents2014 <- Schemas.parse2014 (fullPath "2014.csv")
-  -- contents2015 <- Schemas.parse2015 (fullPath "2015.csv")
-  -- contents2016 <- Schemas.parse2016 (fullPath "2016.csv")
-  -- contents2017 <- Schemas.parse2017 (fullPath "2017.csv")
-  -- contents2018 <- Schemas.parse2018 (fullPath "2018.csv")
-  -- contents2019 <- Schemas.parse2019 (fullPath "2019.csv")
-  -- contents2020 <- Schemas.parse2020 (fullPath "2020.csv")
-  -- contents2021 <- Schemas.parse2021 (fullPath "2021.csv")
-  -- contents2022 <- Schemas.parse2022 (fullPath "2022.csv")
-  -- contents2023 <- Schemas.parse2023 (fullPath "2023.csv")
-  -- contents2024 <- Schemas.parse2024 (fullPath "2024.csv")
-  contents2025 <- Schemas.parse2025 (fullPath "2025.csv")
-  forM_ contents2025 $ \row -> print row
+  let parsers =
+        [ Schemas.parse2012 (importDir "2012.csv"),
+          Schemas.parse2013 (importDir "2013.csv"),
+          Schemas.parse2014 (importDir "2014.csv"),
+          Schemas.parse2015 (importDir "2015.csv"),
+          Schemas.parse2016 (importDir "2016.csv"),
+          Schemas.parse2017 (importDir "2017.csv"),
+          Schemas.parse2018 (importDir "2018.csv"),
+          Schemas.parse2019 (importDir "2019.csv"),
+          Schemas.parse2020 (importDir "2020.csv"),
+          Schemas.parse2021 (importDir "2021.csv"),
+          Schemas.parse2022 (importDir "2022.csv"),
+          Schemas.parse2023 (importDir "2023.csv"),
+          Schemas.parse2024 (importDir "2024.csv"),
+          Schemas.parse2025 (importDir "2025.csv")
+        ]
+  csvData <- concat <$> sequence parsers
+  forM_ csvData $ \row -> print row
