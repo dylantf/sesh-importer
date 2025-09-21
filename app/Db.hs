@@ -1,24 +1,14 @@
-module Db (testInsert, determineKiteIds) where
+module Db (testInsert, determineHydrofoilIds) where
 
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Logger (runStderrLoggingT)
 import Data.List.Split
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, maybeToList)
 import Data.Time (Day)
 import Database.Persist
 import Database.Persist.Postgresql
 import Database.Persist.TH
 import Parsers (Normalized (..), Sport (..))
-
--- { id: 17, user_id: dylan, type: "hydrofoil", name: "Slingshot Hover Glide NF2", size: "707", active: false }
--- { id: 18, user_id: dylan, type: "hydrofoil", name: "Liquid Force Thruster", size: "650", active: false }
--- { id: 19, user_id: dylan, type: "hydrofoil", name: "Axis ART 999", size: "999", active: false }
--- { id: 20, user_id: dylan, type: "hydrofoil", name: "Axis ART 799", size: "799", active: false }
--- { id: 21, user_id: dylan, type: "hydrofoil", name: "F-One Seven Seas", size: "1200", active: false }
--- { id: 22, user_id: dylan, type: "hydrofoil", name: "F-One Phantom-S", size: "840", active: true }
--- { id: 23, user_id: dylan, type: "hydrofoil", name: "Gong Ypra-S v2", size: "780", active: true }
--- { id: 24, user_id: dylan, type: "hydrofoil", name: "Gong Ypra-S v2", size: "1000", active: true }
--- { id: 25, user_id: dylan, type: "hydrofoil", name: "Gong Veloce v3", size: "890", active: true }
 
 -- { id: 26, user_id: dylan, type: "foilboard", name: "Slingshot Alien Air", size: "40L", active: false }
 -- { id: 27, user_id: dylan, type: "foilboard", name: "Liquid Force Galaxy", size: "4'2", active: false }
@@ -99,13 +89,43 @@ determineKiteId (seshDate, kiteSize) = case (seshDate, kiteSize) of
   (d, "7m") | after "2021-01-01" d -> Just 16
   _ -> Nothing
 
+splitValues :: String -> [String]
+splitValues = splitOn ","
+
 determineKiteIds :: Normalized -> [Int]
 determineKiteIds row =
   case (sport row, kiteSize row) of
     (Kiteboarding, Just kiteSizes) ->
-      let sizes = splitOn "," kiteSizes
+      let sizes = splitValues kiteSizes
        in mapMaybe (\size -> determineKiteId (date row, size)) sizes
     _ -> []
+
+determineHydrofoilId :: (Day, Maybe String) -> Maybe Int
+determineHydrofoilId (day, foilName) = case (day, foilName) of
+  (d, Nothing) | before "2019-05-26" d -> Just 17
+  (d, Nothing) | after "2019-05-27" d -> Just 18
+  (_, Just "Thruster") -> Just 18
+  (_, Just "ART 999") -> Just 19
+  (_, Just "ART 799") -> Just 20
+  (_, Just "Phantom 1480") -> Just 21
+  (_, Just "Seven Seas 1200") -> Just 22
+  (_, Just "Phantom-S 840") -> Just 23
+  (_, Just "Eagle 890") -> Just 24
+  (_, Just "Eagle 990") -> Just 25
+  (_, Just "Ypra-S 785") -> Just 26
+  (_, Just "Ypra-S 1000") -> Just 27
+  (_, Just "Veloce 890") -> Just 28
+  _ -> Nothing
+
+determineHydrofoilIds :: Normalized -> [Int]
+determineHydrofoilIds row =
+  case (usesFoil, date row, foil row) of
+    (False, _, _) -> []
+    (True, d, f) -> maybeToList $ determineHydrofoilId (d, f)
+  where
+    usesFoil = case boardType row of
+      Just bt -> "Hydrofoil" `elem` splitValues bt
+      Nothing -> False
 
 testInsert :: IO ()
 testInsert = do
