@@ -24,7 +24,6 @@ between (start, end) d = d >= read start && d <= read end
 splitValues :: String -> [String]
 splitValues = splitOn ","
 
--- Haskell seriously doesn't have string replacement lol?
 replace :: String -> String -> String -> String
 replace from with = go
   where
