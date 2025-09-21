@@ -1,5 +1,6 @@
 module Parsers
-  ( Normalized,
+  ( Normalized (..),
+    Sport (..),
     parse2012,
     parse2013,
     parse2014,

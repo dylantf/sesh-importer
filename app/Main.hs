@@ -1,6 +1,7 @@
 module Main where
 
 import Control.Monad (forM_)
+import Db (determineKiteIds)
 import Parsers qualified
 
 importDir :: String -> String
@@ -25,4 +26,6 @@ main = do
           Parsers.parse2025 (importDir "2025.csv")
         ]
   csvData <- concat <$> sequence parsers
+  let kiteIds = map determineKiteIds csvData
   forM_ csvData $ \row -> print row
+  forM_ kiteIds $ \ids -> print ids

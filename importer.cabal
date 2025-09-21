@@ -38,6 +38,7 @@ executable importer
     monad-logger,
     persistent,
     persistent-postgresql,
+    split,
     time,
     vector,
 

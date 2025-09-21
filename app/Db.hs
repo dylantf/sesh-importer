@@ -1,27 +1,14 @@
-module Db (testInsert) where
+module Db (testInsert, determineKiteIds) where
 
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Logger (runStderrLoggingT)
+import Data.List.Split
+import Data.Maybe (mapMaybe)
 import Data.Time (Day)
 import Database.Persist
 import Database.Persist.Postgresql
 import Database.Persist.TH
-
--- { id: 1, user_id: dylan, type: "kite", name: "Mutiny P-Series", size: "12m", active: false }
--- { id: 2, user_id: dylan, type: "kite", name: "Mutiny P-Series", size: "8m", active: false }
--- { id: 3, user_id: dylan, type: "kite", name: "Liquid Force Envy 2013", size: "12m", active: false }
--- { id: 4, user_id: dylan, type: "kite", name: "Liquid Force Envy 2013", size: "9m", active: false }
--- { id: 6, user_id: dylan, type: "kite", name: "Slingshot Fuel 2013", size: "13m", active: false }
--- { id: 7, user_id: dylan, type: "kite", name: "Slingshot Fuel 2013", size: "9m", active: false }
--- { id: 8, user_id: dylan, type: "kite", name: "Slingshot Fuel 2013", size: "7m", active: false }
--- { id: 9, user_id: dylan, type: "kite", name: "Switch Nitro v4", size: "12m", active: false }
--- { id: 10, user_id: dylan, type: "kite", name: "Best TS 2015", size: "10m", active: false }
--- { id: 11, user_id: dylan, type: "kite", name: "Best TS 2015", size: "7m", active: false }
--- { id: 12, user_id: dylan, type: "kite", name: "Liquid Force Envy 2016", size: "12m", active: false }
--- { id: 13, user_id: dylan, type: "kite", name: "Best Roca 2016", size: "10m", active: false }
--- { id: 14, user_id: dylan, type: "kite", name: "Liquid Force Wow 2018", size: "7m", active: false }
--- { id: 15, user_id: dylan, type: "kite", name: "Ozone Enduro v2", size: "9m", active: true }
--- { id: 16, user_id: dylan, type: "kite", name: "Ozone Enduro v2", size: "7m", active: true }
+import Parsers (Normalized (..), Sport (..))
 
 -- { id: 17, user_id: dylan, type: "hydrofoil", name: "Slingshot Hover Glide NF2", size: "707", active: false }
 -- { id: 18, user_id: dylan, type: "hydrofoil", name: "Liquid Force Thruster", size: "650", active: false }
@@ -79,6 +66,46 @@ SeshGear sql="sesh_gear"
     gearId Int sql="gear_id"
     deriving Show
 |]
+
+-- Date range helpers
+
+before :: String -> Day -> Bool
+before dateStr d = d <= read dateStr
+
+after :: String -> Day -> Bool
+after dateStr d = d >= read dateStr
+
+between :: (String, String) -> Day -> Bool
+between (start, end) d = d >= read start && d <= read end
+
+-- Heuristics to determine which gear IDs were used based on date and sizes
+
+determineKiteId :: (Day, String) -> Maybe Int
+determineKiteId (seshDate, kiteSize) = case (seshDate, kiteSize) of
+  (d, "12m") | before "2013-01-15" d -> Just 1
+  (d, "8m") | before "2013-01-15" d -> Just 2
+  (d, "12m") | between ("2013-01-16", "2013-12-07") d -> Just 3
+  (d, "9m") | between ("2013-01-16", "2013-12-07") d -> Just 4
+  (d, "13m") | between ("2013-12-08", "2014-12-31") d -> Just 6
+  (d, "9m") | between ("2013-12-08", "2014-12-31") d -> Just 7
+  (d, "7m") | between ("2013-12-08", "2014-12-31") d -> Just 8
+  (d, "12m") | between ("2015-01-01", "2017-02-05") d -> Just 9
+  (d, "10m") | between ("2016-10-09", "2018-01-24") d -> Just 10
+  (d, "7m") | between ("2016-10-09", "2019-10-04") d -> Just 11
+  (d, "12m") | between ("2017-02-06", "2022-08-10") d -> Just 12
+  (d, "10m") | between ("2018-01-25", "2020-12-31") d -> Just 13
+  (d, "7m") | between ("2019-10-05", "2020-12-31") d -> Just 14
+  (d, "9m") | after "2021-01-01" d -> Just 15
+  (d, "7m") | after "2021-01-01" d -> Just 16
+  _ -> Nothing
+
+determineKiteIds :: Normalized -> [Int]
+determineKiteIds row =
+  case (sport row, kiteSize row) of
+    (Kiteboarding, Just kiteSizes) ->
+      let sizes = splitOn "," kiteSizes
+       in mapMaybe (\size -> determineKiteId (date row, size)) sizes
+    _ -> []
 
 testInsert :: IO ()
 testInsert = do
