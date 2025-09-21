@@ -1,13 +1,8 @@
-module Db (testInsert, determineHydrofoilIds) where
+module Db (determineHydrofoilIds) where
 
-import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Logger (runStderrLoggingT)
 import Data.List.Split
 import Data.Maybe (mapMaybe, maybeToList)
 import Data.Time (Day)
-import Database.Persist
-import Database.Persist.Postgresql
-import Database.Persist.TH
 import Parsers (Normalized (..), Sport (..))
 
 -- { id: 26, user_id: dylan, type: "foilboard", name: "Slingshot Alien Air", size: "40L", active: false }
@@ -24,38 +19,6 @@ import Parsers (Normalized (..), Sport (..))
 -- { id: 36, user_id: dylan, type: "wing", name: "Gong Neutra 2024", size: "5m", active: true }
 -- { id: 37, user_id: dylan, type: "wing", name: "Gong Neutra 2024", size: "4m", active: true }
 -- { id: 38, user_id: dylan, type: "wing", name: "Gong Droid 2024", size: "3m", active: true }
-
-mkPersist
-  sqlSettings
-  [persistLowerCase|
-Sesh sql="seshes"
-    userId Int sql="user_id"
-    date Day sql="date"
-    sport String sql="sport"
-    durationSeconds Int sql="duration_seconds"
-    locationName String Maybe sql="location_name"
-    comments String Maybe sql="comments"
-    deriving Show
-
-KiteboardingSesh sql="kiteboarding_seshes"
-    seshId Int sql="sesh_id"
-    windAvg Int sql="wind_avg"
-    windGust Int sql="wind_gust"
-    seshType String sql="sesh_type"
-    deriving Show
-
-WingFoilingSesh sql="wing_foiling_seshes"
-    seshId Int sql="sesh_id"
-    windAvg Int sql="wind_avg"
-    windGust Int sql="wind_gust"
-    seshType String sql="sesh_type"
-    deriving Show
-
-SeshGear sql="sesh_gear"
-    seshId Int sql="sesh_id"
-    gearId Int sql="gear_id"
-    deriving Show
-|]
 
 -- Date range helpers
 
@@ -126,12 +89,3 @@ determineHydrofoilIds row =
     usesFoil = case boardType row of
       Just bt -> "Hydrofoil" `elem` splitValues bt
       Nothing -> False
-
-testInsert :: IO ()
-testInsert = do
-  let connStr = "host=localhost dbname=seshtracker_dev user=dylan password=dylan port=5432"
-  runStderrLoggingT $ withPostgresqlConn connStr $ \backend -> liftIO $ do
-    flip runSqlConn backend $ do
-      _ <- insert $ Sesh 1 (read "2023-10-01") "Kiteboarding" 3600 (Just "Test Location") (Just "Test Comments")
-      return ()
-    putStrLn "Insert completed"

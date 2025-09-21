@@ -22,22 +22,13 @@ executable importer
     Parsers
 
   default-extensions:
-    DataKinds
-    DerivingStrategies
     OverloadedStrings
-    QuasiQuotes
-    TemplateHaskell
     TypeApplications
-    TypeFamilies
-    UndecidableInstances
 
   build-depends:
     base ^>=4.18.3.0,
     bytestring,
     cassava,
-    monad-logger,
-    persistent,
-    persistent-postgresql,
     split,
     time,
     vector,
