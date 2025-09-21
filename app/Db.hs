@@ -1,5 +1,6 @@
 module Db (insertData) where
 
+import Control.Monad (forM_)
 import Database.PostgreSQL.Simple
 import Gear
 import Parsers (Normalized (..), SeshType (..), Sport (..))
@@ -27,11 +28,9 @@ seshTypeToString seshType = case seshType of
   Downwinder -> "downwinder"
   Roundwinder -> "roundwinder"
 
-seshSql :: String
+seshSql :: Query
 seshSql =
-  "insert into seshes"
-    ++ " (user_id, date, sport, duration_seconds, location_name, comments)"
-    ++ " values (?, ?, ?, ?, ?, ?) returning id"
+  "insert into seshes (user_id, date, sport, duration_seconds, location_name, comments) values (?, ?, ?, ?, ?, ?) returning id"
 
 seshVariables :: Normalized -> (Int, String, String, Int, Maybe String, String)
 seshVariables sesh =
@@ -43,22 +42,21 @@ seshVariables sesh =
     comments sesh
   )
 
-kiteboardingSeshSql :: String
+kiteboardingSeshSql :: Query
 kiteboardingSeshSql =
-  "insert into kiteboarding_seshes"
-    ++ " (sesh_id, wind_avg, wind_gust, sesh_type) values (?, ?, ?, ?)"
+  "insert into kiteboarding_seshes (sesh_id, wind_avg, wind_gust, sesh_type) values (?, ?, ?, ?) returning id"
 
-kiteboardingSeshVariables :: Normalized -> (Maybe Int, Maybe Int, Maybe String)
-kiteboardingSeshVariables sesh =
-  ( windAvg sesh,
+kiteboardingSeshVars :: Normalized -> Int -> (Int, Maybe Int, Maybe Int, Maybe String)
+kiteboardingSeshVars sesh seshId =
+  ( seshId,
+    windAvg sesh,
     windGust sesh,
     seshType sesh >>= Just . seshTypeToString
   )
 
-wingFoilingSeshSql :: String
+wingFoilingSeshSql :: Query
 wingFoilingSeshSql =
-  "insert into wing_foiling_seshes"
-    ++ " (sesh_id, wind_avg, wind_gust, sesh_type) values (?, ?, ?, ?)"
+  "insert into wing_foiling_seshes (sesh_id, wind_avg, wind_gust, sesh_type) values (?, ?, ?, ?) returning id"
 
 seshGearSql :: Int -> [Int] -> String
 seshGearSql seshId gearIds =
@@ -67,12 +65,28 @@ seshGearSql seshId gearIds =
 seshGearIds :: Normalized -> [Int]
 seshGearIds sesh = concatMap ($ sesh) [kiteIds, hydrofoilIds, boardIds, wingIds]
 
-seshGearVariables :: Int -> [Int] -> [(Int, Int)]
-seshGearVariables seshId gearIds = map (seshId,) gearIds
+seshGearVars :: Int -> [Int] -> [(Int, Int)]
+seshGearVars seshId gearIds = map (seshId,) gearIds
+
+insertRelatedSeshData :: Connection -> Int -> Normalized -> IO ()
+insertRelatedSeshData conn seshId sesh = do
+  case sport sesh of
+    Kiteboarding -> do
+      [Only kbSeshId] <- query conn kiteboardingSeshSql $ kiteboardingSeshVars sesh seshId :: IO [Only Int]
+      putStrLn $ "-- Inserted kiteboarding sesh with ID: " ++ show kbSeshId
+    WingFoiling -> do
+      [Only wfSeshId] <- query conn wingFoilingSeshSql $ kiteboardingSeshVars sesh seshId :: IO [Only Int]
+      putStrLn $ "-- Inserted wing foiling sesh with ID: " ++ show wfSeshId
+    _other -> pure ()
+
+insertSesh :: Connection -> Normalized -> IO Int
+insertSesh conn sesh = do
+  [Only seshId] <- query conn seshSql (seshVariables sesh)
+  putStrLn $ "Inserted sesh with id: " ++ show seshId
+  _ <- insertRelatedSeshData conn seshId sesh
+  pure seshId
 
 insertData :: [Normalized] -> IO ()
 insertData rows = do
   conn <- connectPostgreSQL "host=localhost port=5432 dbname=seshtracker_dev user=dylan password=dylan"
-  [Only res] <- query conn "select ? + ?" (1 :: Int, 2 :: Int) :: IO [Only Int]
-  putStrLn $ "Result is: " ++ show res
-  putStrLn "Ok"
+  forM_ rows $ insertSesh conn
