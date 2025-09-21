@@ -25,5 +25,5 @@ main = do
           Parsers.parse2025 (importDir "2025.csv")
         ]
   csvData <- concat <$> sequence parsers
-  insertResult <- insertData csvData
+  _ <- insertData csvData
   putStrLn "Done"

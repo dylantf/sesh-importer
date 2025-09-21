@@ -58,9 +58,8 @@ wingFoilingSeshSql :: Query
 wingFoilingSeshSql =
   "insert into wing_foiling_seshes (sesh_id, wind_avg, wind_gust, sesh_type) values (?, ?, ?, ?) returning id"
 
-seshGearSql :: Int -> [Int] -> String
-seshGearSql seshId gearIds =
-  "insert into sesh_gear (sesh_id, gear_id) values (?, ?);"
+seshGearSql :: Query
+seshGearSql = "insert into sesh_gear (sesh_id, gear_id) values (?, ?);"
 
 seshGearIds :: Normalized -> [Int]
 seshGearIds sesh = concatMap ($ sesh) [kiteIds, hydrofoilIds, boardIds, wingIds]
@@ -78,6 +77,14 @@ insertRelatedSeshData conn seshId sesh = do
       [Only wfSeshId] <- query conn wingFoilingSeshSql $ kiteboardingSeshVars sesh seshId :: IO [Only Int]
       putStrLn $ "-- Inserted wing foiling sesh with ID: " ++ show wfSeshId
     _other -> pure ()
+
+  case seshGearIds sesh of
+    [] -> putStrLn "-- (no gear to insert)"
+    gearIds -> do
+      let vars = seshGearVars seshId gearIds
+      putStrLn $ "-- Insterting gear: " ++ show vars
+      _ <- executeMany conn seshGearSql vars
+      pure ()
 
 insertSesh :: Connection -> Normalized -> IO Int
 insertSesh conn sesh = do
