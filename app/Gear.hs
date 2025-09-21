@@ -1,11 +1,15 @@
-module Db (determineWingIds) where
+module Gear
+  ( kiteIds,
+    hydrofoilIds,
+    boardIds,
+    wingIds,
+  )
+where
 
 import Data.List.Split
 import Data.Maybe (mapMaybe, maybeToList)
 import Data.Time (Day)
 import Parsers (Normalized (..), Sport (..))
-
--- Date range helpers
 
 before :: String -> Day -> Bool
 before dateStr d = d <= read dateStr
@@ -16,10 +20,11 @@ after dateStr d = d >= read dateStr
 between :: (String, String) -> Day -> Bool
 between (start, end) d = d >= read start && d <= read end
 
--- Heuristics to determine which gear IDs were used based on date and sizes
+splitValues :: String -> [String]
+splitValues = splitOn ","
 
-determineKiteId :: (Day, String) -> Maybe Int
-determineKiteId (seshDate, kiteSize) = case (seshDate, kiteSize) of
+kiteId :: (Day, String) -> Maybe Int
+kiteId (seshDate, kiteSize) = case (seshDate, kiteSize) of
   (d, "12m") | before "2013-01-15" d -> Just 1
   (d, "8m") | before "2013-01-15" d -> Just 2
   (d, "12m") | between ("2013-01-16", "2013-12-07") d -> Just 3
@@ -37,19 +42,16 @@ determineKiteId (seshDate, kiteSize) = case (seshDate, kiteSize) of
   (d, "7m") | after "2021-01-01" d -> Just 16
   _ -> Nothing
 
-splitValues :: String -> [String]
-splitValues = splitOn ","
-
-determineKiteIds :: Normalized -> [Int]
-determineKiteIds row =
+kiteIds :: Normalized -> [Int]
+kiteIds row =
   case (sport row, kiteSize row) of
     (Kiteboarding, Just kiteSizes) ->
       let sizes = splitValues kiteSizes
-       in mapMaybe (\size -> determineKiteId (date row, size)) sizes
+       in mapMaybe (\size -> kiteId (date row, size)) sizes
     _ -> []
 
-determineHydrofoilId :: (Day, Maybe String) -> Maybe Int
-determineHydrofoilId (day, foilName) = case (day, foilName) of
+hydrofoilId :: (Day, Maybe String) -> Maybe Int
+hydrofoilId (day, foilName) = case (day, foilName) of
   (d, Nothing) | before "2019-05-26" d -> Just 17
   (d, Nothing) | after "2019-05-27" d -> Just 18
   (_, Just "Thruster") -> Just 18
@@ -70,14 +72,14 @@ usesFoil row = case boardType row of
   Just bt -> "Hydrofoil" `elem` splitValues bt
   Nothing -> False
 
-determineHydrofoilIds :: Normalized -> [Int]
-determineHydrofoilIds row =
+hydrofoilIds :: Normalized -> [Int]
+hydrofoilIds row =
   case (usesFoil row, date row, foil row) of
     (False, _, _) -> []
-    (True, d, f) -> maybeToList $ determineHydrofoilId (d, f)
+    (True, d, f) -> maybeToList $ hydrofoilId (d, f)
 
-determineBoardId :: (Day, Maybe String) -> Maybe Int
-determineBoardId (day, boardName) = case (day, boardName) of
+boardId :: (Day, Maybe String) -> Maybe Int
+boardId (day, boardName) = case (day, boardName) of
   (_, Just "Groove Skate") -> Just 28
   (d, Nothing) | after "2022-08-10" d -> Just 28
   (_, Just "Rocket v2 85L") -> Just 29
@@ -90,13 +92,13 @@ determineBoardId (day, boardName) = case (day, boardName) of
   _ -> Nothing
 
 -- I only care about foilboards, throw away others
-determineBoardIds :: Normalized -> [Int]
-determineBoardIds row
-  | usesFoil row = maybeToList $ determineBoardId (date row, board row)
+boardIds :: Normalized -> [Int]
+boardIds row
+  | usesFoil row = maybeToList $ boardId (date row, board row)
   | otherwise = []
 
-determineWingId :: (Day, String) -> Maybe Int
-determineWingId (day, size) = case (day, size) of
+wingId :: (Day, String) -> Maybe Int
+wingId (day, size) = case (day, size) of
   (_, "6m") -> Just 32
   (d, "5m")
     | before "2024-01-01" d -> Just 33
@@ -108,8 +110,8 @@ determineWingId (day, size) = case (day, size) of
   (_, "3m") -> Just 38
   _ -> Nothing
 
-determineWingIds :: Normalized -> [Int]
-determineWingIds row =
+wingIds :: Normalized -> [Int]
+wingIds row =
   let usesWing = case sport row of
         WingFoiling -> True
         Parawinging -> True
@@ -117,5 +119,5 @@ determineWingIds row =
    in case (usesWing, wingSize row) of
         (True, Just wingSizes) ->
           let sizes = splitValues wingSizes
-           in mapMaybe (\size -> determineWingId (date row, size)) sizes
+           in mapMaybe (\size -> wingId (date row, size)) sizes
         _ -> []
