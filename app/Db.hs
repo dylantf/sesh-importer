@@ -1,17 +1,9 @@
-module Db (determineBoardIds) where
+module Db (determineWingIds) where
 
 import Data.List.Split
 import Data.Maybe (mapMaybe, maybeToList)
 import Data.Time (Day)
 import Parsers (Normalized (..), Sport (..))
-
--- { id: 32, user_id: dylan, type: "wing", name: "Cabrinha Crosswing X2", size: "6m", active: false }
--- { id: 33, user_id: dylan, type: "wing", name: "Ozone WASP v2", size: "5m", active: false }
--- { id: 34, user_id: dylan, type: "wing", name: "F-One Strike v2", size: "4m", active: false }
--- { id: 35, user_id: dylan, type: "wing", name: "Duotone Unit 2022", size: "5.5m", active: false }
--- { id: 36, user_id: dylan, type: "wing", name: "Gong Neutra 2024", size: "5m", active: true }
--- { id: 37, user_id: dylan, type: "wing", name: "Gong Neutra 2024", size: "4m", active: true }
--- { id: 38, user_id: dylan, type: "wing", name: "Gong Droid 2024", size: "3m", active: true }
 
 -- Date range helpers
 
@@ -102,3 +94,28 @@ determineBoardIds :: Normalized -> [Int]
 determineBoardIds row
   | usesFoil row = maybeToList $ determineBoardId (date row, board row)
   | otherwise = []
+
+determineWingId :: (Day, String) -> Maybe Int
+determineWingId (day, size) = case (day, size) of
+  (_, "6m") -> Just 32
+  (d, "5m")
+    | before "2024-01-01" d -> Just 33
+    | after "2024-01-01" d -> Just 36
+  (d, "4m")
+    | before "2024-01-01" d -> Just 34
+    | after "2024-01-01" d -> Just 37
+  (_, "5.5m") -> Just 35
+  (_, "3m") -> Just 38
+  _ -> Nothing
+
+determineWingIds :: Normalized -> [Int]
+determineWingIds row =
+  let usesWing = case sport row of
+        WingFoiling -> True
+        Parawinging -> True
+        _ -> False
+   in case (usesWing, wingSize row) of
+        (True, Just wingSizes) ->
+          let sizes = splitValues wingSizes
+           in mapMaybe (\size -> determineWingId (date row, size)) sizes
+        _ -> []
