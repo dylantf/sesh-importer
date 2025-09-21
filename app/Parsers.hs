@@ -1,4 +1,4 @@
-module Schemas
+module Parsers
   ( Normalized,
     parse2012,
     parse2013,
