@@ -1,6 +1,7 @@
 module Parsers
   ( Normalized (..),
     Sport (..),
+    SeshType (..),
     parse2012,
     parse2013,
     parse2014,

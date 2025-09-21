@@ -1,6 +1,6 @@
 module Main where
 
-import Control.Monad (forM_)
+import Db (insertData)
 import Parsers qualified
 
 importDir :: String -> String
@@ -25,4 +25,5 @@ main = do
           Parsers.parse2025 (importDir "2025.csv")
         ]
   csvData <- concat <$> sequence parsers
-  forM_ csvData $ \row -> print row
+  insertResult <- insertData csvData
+  putStrLn "Done"
