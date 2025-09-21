@@ -6,6 +6,7 @@ module Gear
   )
 where
 
+import Data.List (isPrefixOf)
 import Data.List.Split
 import Data.Maybe (mapMaybe, maybeToList)
 import Data.Time (Day)
@@ -23,24 +24,35 @@ between (start, end) d = d >= read start && d <= read end
 splitValues :: String -> [String]
 splitValues = splitOn ","
 
+-- Haskell seriously doesn't have string replacement lol?
+replace :: String -> String -> String -> String
+replace from with = go
+  where
+    go [] = []
+    go s@(x : xs)
+      | from `isPrefixOf` s = with ++ go (drop (length from) s)
+      | otherwise = x : go xs
+
 kiteId :: (Day, String) -> Maybe Int
-kiteId (seshDate, kiteSize) = case (seshDate, kiteSize) of
-  (d, "12m") | before "2013-01-15" d -> Just 1
-  (d, "8m") | before "2013-01-15" d -> Just 2
-  (d, "12m") | between ("2013-01-16", "2013-12-07") d -> Just 3
-  (d, "9m") | between ("2013-01-16", "2013-12-07") d -> Just 4
-  (d, "13m") | between ("2013-12-08", "2014-12-31") d -> Just 6
-  (d, "9m") | between ("2013-12-08", "2014-12-31") d -> Just 7
-  (d, "7m") | between ("2013-12-08", "2014-12-31") d -> Just 8
-  (d, "12m") | between ("2015-01-01", "2017-02-05") d -> Just 9
-  (d, "10m") | between ("2016-10-09", "2018-01-24") d -> Just 10
-  (d, "7m") | between ("2016-10-09", "2019-10-04") d -> Just 11
-  (d, "12m") | between ("2017-02-06", "2022-08-10") d -> Just 12
-  (d, "10m") | between ("2018-01-25", "2020-12-31") d -> Just 13
-  (d, "7m") | between ("2019-10-05", "2020-12-31") d -> Just 14
-  (d, "9m") | after "2021-01-01" d -> Just 15
-  (d, "7m") | after "2021-01-01" d -> Just 16
-  _ -> Nothing
+kiteId (seshDate, kiteSize) =
+  let normalizedSize = replace "m" "" kiteSize
+   in case (seshDate, normalizedSize) of
+        (d, "12") | before "2013-01-15" d -> Just 1
+        (d, "8") | before "2013-01-15" d -> Just 2
+        (d, "12") | between ("2013-01-16", "2013-12-07") d -> Just 3
+        (d, "9") | between ("2013-01-16", "2013-12-07") d -> Just 4
+        (d, "13") | between ("2013-12-08", "2014-12-31") d -> Just 6
+        (d, "9") | between ("2013-12-08", "2014-12-31") d -> Just 7
+        (d, "7") | between ("2013-12-08", "2014-12-31") d -> Just 8
+        (d, "12") | between ("2015-01-01", "2017-02-05") d -> Just 9
+        (d, "10") | between ("2016-10-09", "2018-01-24") d -> Just 10
+        (d, "7") | between ("2016-10-09", "2019-10-04") d -> Just 11
+        (d, "12") | between ("2017-02-06", "2022-08-10") d -> Just 12
+        (d, "10") | between ("2018-01-25", "2020-12-31") d -> Just 13
+        (d, "7") | between ("2019-10-05", "2020-12-31") d -> Just 14
+        (d, "9") | after "2021-01-01" d -> Just 15
+        (d, "7") | after "2021-01-01" d -> Just 16
+        _ -> Nothing
 
 kiteIds :: Normalized -> [Int]
 kiteIds row =
