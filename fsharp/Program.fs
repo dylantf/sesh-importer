@@ -1,17 +1,18 @@
 ﻿module Importer
 
 open Parsers
-open FSharp.Data
 
-let fullPath (year: int) =
-    let dir = "/home/dylan/Desktop/Sesh Import"
-    dir + $"/{year}.csv"
+let parseCsvData () =
+    let fullPath (year: int) =
+        let dir = "/home/dylan/Desktop/Sesh Import"
+        dir + $"/{year}.csv"
 
+    seq { 2012..2025 } |> Seq.map (fun year -> parseFile year (fullPath year))
 
 [<EntryPoint>]
 let main _ =
-    let years = seq { 2012..2025 }
-    let normalized = years |> Seq.map (fun year -> parseFile year (fullPath year))
+    let normalized = parseCsvData ()
 
     normalized |> Seq.iter (fun normalized -> printfn "%A" normalized)
+
     0
