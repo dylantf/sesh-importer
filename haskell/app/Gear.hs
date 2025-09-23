@@ -91,15 +91,15 @@ hydrofoilIds row =
 
 boardId :: (Day, Maybe String) -> Maybe Int
 boardId (day, boardName) = case (day, boardName) of
-  (_, Just "Groove Skate") -> Just 28
-  (d, Nothing) | after "2022-08-10" d -> Just 28
-  (_, Just "Rocket v2 85L") -> Just 29
-  (_, Just "Rocket v2 60L") -> Just 31
-  (_, Just "Rocket 60L") -> Just 31
-  (_, Just "Flying Fish 40L") -> Just 30
-  (_, Just "LF Galaxy") -> Just 27
-  (d, Nothing) | between ("2017-06-24", "2022-08-09") d -> Just 27
-  (d, Nothing) | before "2017-06-23" d -> Just 26
+  (_, Just "Groove Skate") -> Just 31
+  (d, Nothing) | after "2022-08-10" d -> Just 31
+  (_, Just "Rocket v2 85L") -> Just 32
+  (_, Just "Rocket v2 60L") -> Just 34
+  (_, Just "Rocket 60L") -> Just 34
+  (_, Just "Flying Fish 40L") -> Just 33
+  (_, Just "LF Galaxy") -> Just 30
+  (d, Nothing) | between ("2017-06-24", "2022-08-09") d -> Just 30
+  (d, Nothing) | before "2017-06-23" d -> Just 17
   _ -> Nothing
 
 -- I only care about foilboards, throw away others
@@ -110,15 +110,15 @@ boardIds row
 
 wingId :: (Day, String) -> Maybe Int
 wingId (day, size) = case (day, size) of
-  (_, "6m") -> Just 32
+  (_, "6m") -> Just 35
   (d, "5m")
-    | before "2024-01-01" d -> Just 33
-    | after "2024-01-01" d -> Just 36
+    | before "2024-01-01" d -> Just 36
+    | after "2024-01-01" d -> Just 39
   (d, "4m")
-    | before "2024-01-01" d -> Just 34
-    | after "2024-01-01" d -> Just 37
-  (_, "5.5m") -> Just 35
-  (_, "3m") -> Just 38
+    | before "2024-01-01" d -> Just 37
+    | after "2024-01-01" d -> Just 40
+  (_, "5.5m") -> Just 38
+  (_, "3m") -> Just 41
   _ -> Nothing
 
 wingIds :: Normalized -> [Int]
