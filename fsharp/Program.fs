@@ -11,7 +11,6 @@ let fullPath (year: int) =
 [<EntryPoint>]
 let main _ =
     let years = seq { 2012..2025 }
-
     let normalized = years |> Seq.map (fun year -> parseFile year (fullPath year))
 
     normalized |> Seq.iter (fun normalized -> printfn "%A" normalized)

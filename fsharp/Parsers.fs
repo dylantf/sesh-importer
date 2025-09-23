@@ -45,20 +45,20 @@ type Normalized =
       location: string option
       comments: string option }
 
-let maybeString (s: string) : string option =
+let private maybeString (s: string) : string option =
     match s.Trim() with
     | "" -> None
     | s -> Some s
 
-let parseInt = maybeString >> Option.map int
+let private parseInt = maybeString >> Option.map int
 
-let parseMany (s: string) =
+let private parseMany (s: string) =
     s
     |> maybeString
     |> Option.map (fun s -> s.Split ',' |> Array.map (fun s -> s.Trim()))
     |> Option.map Array.toList
 
-let parseSport =
+let private parseSport =
     function
     | "Kiteboarding" -> Kiteboarding
     | "SUP" -> Sport.SUP
@@ -74,14 +74,14 @@ let parseSport =
     | "Parawinging" -> Parawinging
     | other -> failwith $"Unhandled sport: `{other}`"
 
-let parseSeshType =
+let private parseSeshType =
     function
     | Some "Spot" -> Some Spot
     | Some "Downwinder" -> Some Downwinder
     | Some "Roundwinder" -> Some Roundwinder
     | _ -> None
 
-let parseBoardType =
+let private parseBoardType =
     function
     | "Twintip"
     | "Twintp" -> Twintip // Fix typo
@@ -95,10 +95,10 @@ let parseBoardType =
     | other -> failwith $"Unhandled board type: `{other}`"
 
 // Some kite sizes are defined as "12m" and others just "12"
-let normalizeKiteSize (kites: string list option) =
+let private normalizeKiteSize (kites: string list option) =
     kites |> Option.map (List.map (fun kite -> kite.Replace("m", "")))
 
-let parse2012 (row: CsvRow) : Normalized =
+let private parse2012 (row: CsvRow) : Normalized =
     { date = row.GetColumn "Date" |> DateTime.Parse
       sport = row.GetColumn "Sport" |> parseSport
       hours = row.GetColumn "Hours" |> double
@@ -113,7 +113,7 @@ let parse2012 (row: CsvRow) : Normalized =
       location = None
       comments = row.GetColumn "Comments" |> maybeString }
 
-let parse2013 (row: CsvRow) : Normalized =
+let private parse2013 (row: CsvRow) : Normalized =
     { date = row.GetColumn "Date" |> DateTime.Parse
       sport = row.GetColumn "Sport" |> parseSport
       hours = row.GetColumn "Hours" |> double
@@ -128,7 +128,7 @@ let parse2013 (row: CsvRow) : Normalized =
       location = None
       comments = row.GetColumn "Comments" |> maybeString }
 
-let parse2014 (row: CsvRow) : Normalized =
+let private parse2014 (row: CsvRow) : Normalized =
     { date = row.GetColumn "Day" |> DateTime.Parse
       sport = row.GetColumn "Sport" |> parseSport
       hours = row.GetColumn "Hours" |> double
@@ -143,7 +143,7 @@ let parse2014 (row: CsvRow) : Normalized =
       location = row.GetColumn "Location" |> maybeString
       comments = row.GetColumn "Comments" |> maybeString }
 
-let parse2016 (row: CsvRow) : Normalized =
+let private parse2016 (row: CsvRow) : Normalized =
     { date = row.GetColumn "Date" |> DateTime.Parse
       sport = row.GetColumn "Sport" |> parseSport
       hours = row.GetColumn "Hours" |> double
@@ -158,7 +158,7 @@ let parse2016 (row: CsvRow) : Normalized =
       location = row.GetColumn "Location" |> maybeString
       comments = row.GetColumn "Comments" |> maybeString }
 
-let parse2022 (row: CsvRow) : Normalized =
+let private parse2022 (row: CsvRow) : Normalized =
     { date = row.GetColumn "Date" |> DateTime.Parse
       sport = row.GetColumn "Sport" |> parseSport
       hours = row.GetColumn "Hours" |> double
@@ -173,7 +173,7 @@ let parse2022 (row: CsvRow) : Normalized =
       location = row.GetColumn "Location" |> maybeString
       comments = row.GetColumn "Comments" |> maybeString }
 
-let parse2024 (row: CsvRow) : Normalized =
+let private parse2024 (row: CsvRow) : Normalized =
     { date = row.GetColumn "Date" |> DateTime.Parse
       sport = row.GetColumn "Sport" |> parseSport
       hours = row.GetColumn "Hours" |> double
@@ -188,7 +188,7 @@ let parse2024 (row: CsvRow) : Normalized =
       location = row.GetColumn "Location" |> maybeString
       comments = row.GetColumn "Comments" |> maybeString }
 
-let parse2025 (row: CsvRow) : Normalized =
+let private parse2025 (row: CsvRow) : Normalized =
     { date = row.GetColumn "Date" |> DateTime.Parse
       sport = row.GetColumn "Sport" |> parseSport
       hours = row.GetColumn "Hours" |> double
