@@ -13,6 +13,7 @@ OptionTypes.register ()
 let connect () =
     new Npgsql.NpgsqlConnection "Host=localhost;Port=5432;Database=seshtracker_dev;User Id=dylan;Password=dylan;"
 
+[<CLIMutable>]
 type private Sesh =
     { id: int
       user_id: int
@@ -24,6 +25,7 @@ type private Sesh =
       created_at: DateTime
       updated_at: DateTime }
 
+[<CLIMutable>]
 type private KiteboardingSesh =
     { id: int
       sesh_id: int
@@ -31,6 +33,7 @@ type private KiteboardingSesh =
       wind_gust: int
       sesh_type: string }
 
+[<CLIMutable>]
 type private WingFoilingSesh = KiteboardingSesh
 
 type private SeshGear = { id: int; sesh_id: int; gear_id: int }
@@ -89,17 +92,67 @@ let private insertSesh (conn: IDbConnection) (n: Normalized) =
     printfn $"Inserted sesh: {sesh.id} {sesh.date} {sesh.sport}"
     sesh
 
-let private insertKiteboardingSesh conn kbSesh seshId =
-    // TODO
-    ()
+let private insertKiteboardingSesh (conn: IDbConnection) normalized seshId =
+    let kbSesh =
+        match normalized with
+        | { WindAvg = Some windAvg
+            WindGust = Some windGust
+            SeshType = Some seshType } ->
+            { id = -1
+              sesh_id = seshId
+              wind_avg = windAvg
+              wind_gust = windGust
+              sesh_type = stringifySeshType seshType }
+        | _ -> failwith $"Kiteboarding sesh missing data: {normalized}"
 
-let private insertWingFoilingSesh conn kbSesh seshId =
-    // TODO
-    ()
+    let inserted =
+        insert {
+            for t in kiteboardingSeshTable do
+                value kbSesh
+                excludeColumn t.id
+        }
+        |> conn.InsertOutputAsync<KiteboardingSesh, KiteboardingSesh>
+        |> Async.AwaitTask
+        |> Async.RunSynchronously
+        |> Seq.toList
+        |> List.head
+
+    printfn $"-- Inserted kiteboarding sesh {inserted.id}"
+
+
+let private insertWingFoilingSesh (conn: IDbConnection) normalized seshId =
+    let wfSesh =
+        match normalized with
+        | { WindAvg = Some windAvg
+            WindGust = Some windGust
+            SeshType = Some seshType } ->
+            { id = -1
+              sesh_id = seshId
+              wind_avg = windAvg
+              wind_gust = windGust
+              sesh_type = stringifySeshType seshType }
+        | _ -> failwith $"Wing foiling sesh missing data: {normalized}"
+
+    let inserted =
+        insert {
+            for t in wingFoilingSeshTable do
+                value wfSesh
+                excludeColumn t.id
+        }
+        |> conn.InsertOutputAsync<WingFoilingSesh, WingFoilingSesh>
+        |> Async.AwaitTask
+        |> Async.RunSynchronously
+        |> Seq.toList
+        |> List.head
+
+    printfn $"-- Inserted wing foiling sesh {inserted.id}"
 
 let private insertDetails (conn: IDbConnection) (n: Normalized) (seshId: int) =
-    // TODO
-    ()
+    match n with
+    | { Sport = Kiteboarding } as kbSesh -> insertKiteboardingSesh conn kbSesh seshId
+    | { Sport = WingFoiling } as wfSesh -> insertWingFoilingSesh conn wfSesh seshId
+    | { Sport = Parawinging } as pwSesh -> insertWingFoilingSesh conn pwSesh seshId
+    | _ -> ()
 
 let private seshGearIds (n: Normalized) =
     [ kiteIds; wingIds; boardIds; foilIds ] |> List.collect ((|>) n)
