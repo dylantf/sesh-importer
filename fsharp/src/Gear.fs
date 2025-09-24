@@ -69,7 +69,7 @@ let foilIds sesh =
     | _ -> []
     |> List.choose id
 
-let deriveBoardId d boardName =
+let private deriveBoardId d boardName =
     match boardName with
     | Some "Groove Skate"
     | None when after "2022-08-10" d -> Some 31

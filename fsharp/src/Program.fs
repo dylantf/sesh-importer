@@ -14,11 +14,5 @@ let parseCsvData () =
 [<EntryPoint>]
 let main _ =
     let normalized = parseCsvData ()
-
-    let kites =
-        normalized
-        |> List.map (fun n -> n, Gear.boardIds n)
-        |> List.iter (fun (n, k) -> printfn $"{n.Date} -- {n.Sport} {k}")
-    // Looks good!
-
+    List.iter Db.insertSeshData normalized
     0
