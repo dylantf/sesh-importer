@@ -1,6 +1,6 @@
 module Db (insertData) where
 
-import Control.Monad (forM_)
+import Control.Monad (forM_, when)
 import Database.PostgreSQL.Simple
 import Gear
 import Parsers (Normalized (..), SeshType (..), Sport (..))
@@ -42,21 +42,17 @@ seshVariables sesh =
     comments sesh
   )
 
-kiteboardingSeshSql :: Query
-kiteboardingSeshSql =
-  "insert into kiteboarding_seshes (sesh_id, wind_avg, wind_gust, sesh_type) values (?, ?, ?, ?) returning id"
+windSeshDetailsSql :: Query
+windSeshDetailsSql =
+  "insert into wind_sesh_details (sesh_id, wind_avg, wind_gust, sesh_type) values (?, ?, ?, ?) returning id"
 
-kiteboardingSeshVars :: Normalized -> Int -> (Int, Maybe Int, Maybe Int, Maybe String)
-kiteboardingSeshVars sesh seshId =
+windSeshDetailsVars :: Normalized -> Int -> (Int, Maybe Int, Maybe Int, Maybe String)
+windSeshDetailsVars sesh seshId =
   ( seshId,
     windAvg sesh,
     windGust sesh,
     seshType sesh >>= Just . seshTypeToString
   )
-
-wingFoilingSeshSql :: Query
-wingFoilingSeshSql =
-  "insert into wing_foiling_seshes (sesh_id, wind_avg, wind_gust, sesh_type) values (?, ?, ?, ?) returning id"
 
 seshGearSql :: Query
 seshGearSql = "insert into sesh_gear (sesh_id, gear_id) values (?, ?);"
@@ -67,19 +63,23 @@ seshGearIds sesh = concatMap ($ sesh) [kiteIds, hydrofoilIds, boardIds, wingIds]
 seshGearVars :: Int -> [Int] -> [(Int, Int)]
 seshGearVars seshId gearIds = map (seshId,) gearIds
 
-insertRelatedSeshData :: Connection -> Int -> Normalized -> IO ()
-insertRelatedSeshData conn seshId sesh = do
-  case sport sesh of
-    Kiteboarding -> do
-      [Only kbSeshId] <- query conn kiteboardingSeshSql $ kiteboardingSeshVars sesh seshId :: IO [Only Int]
-      putStrLn $ "-- Inserted kiteboarding sesh with ID: " ++ show kbSeshId
-    WingFoiling -> do
-      [Only wfSeshId] <- query conn wingFoilingSeshSql $ kiteboardingSeshVars sesh seshId :: IO [Only Int]
-      putStrLn $ "-- Inserted wing foiling sesh with ID: " ++ show wfSeshId
-    _other -> pure ()
+isWindSesh :: Normalized -> Bool
+isWindSesh normalized = case sport normalized of
+  Kiteboarding -> True
+  WingFoiling -> True
+  Parawinging -> True
+  _ -> False
 
+insertSeshDetails :: Connection -> Int -> Normalized -> IO ()
+insertSeshDetails conn seshId sesh = do
+  when (isWindSesh sesh) $ do
+    [Only kbSeshId] <- query conn windSeshDetailsSql $ windSeshDetailsVars sesh seshId :: IO [Only Int]
+    putStrLn $ "-- Inserted wind sesh details with ID: " ++ show kbSeshId
+
+insertSeshGear :: Connection -> Int -> Normalized -> IO ()
+insertSeshGear conn seshId sesh =
   case seshGearIds sesh of
-    [] -> putStrLn "-- (no gear to insert)"
+    [] -> pure ()
     gearIds -> do
       let vars = seshGearVars seshId gearIds
       putStrLn $ "-- Insterting gear: " ++ show vars
@@ -90,7 +90,8 @@ insertSesh :: Connection -> Normalized -> IO Int
 insertSesh conn sesh = do
   [Only seshId] <- query conn seshSql (seshVariables sesh)
   putStrLn $ "Inserted sesh with id: " ++ show seshId
-  _ <- insertRelatedSeshData conn seshId sesh
+  _ <- insertSeshDetails conn seshId sesh
+  _ <- insertSeshGear conn seshId sesh
   pure seshId
 
 insertData :: [Normalized] -> IO ()

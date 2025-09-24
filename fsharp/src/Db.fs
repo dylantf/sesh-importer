@@ -26,21 +26,17 @@ type private Sesh =
       updated_at: DateTime }
 
 [<CLIMutable>]
-type private KiteboardingSesh =
+type private WindSportSesh =
     { id: int
       sesh_id: int
       wind_avg: int
       wind_gust: int
       sesh_type: string }
 
-[<CLIMutable>]
-type private WingFoilingSesh = KiteboardingSesh
-
 type private SeshGear = { id: int; sesh_id: int; gear_id: int }
 
 let private seshTable = table'<Sesh> "seshes"
-let private kiteboardingSeshTable = table'<KiteboardingSesh> "kiteboarding_seshes"
-let private wingFoilingSeshTable = table'<WingFoilingSesh> "wing_foiling_seshes"
+let private windSeshDetailsTable = table'<WindSportSesh> "wind_sesh_details"
 let private seshGearTable = table'<SeshGear> "sesh_gear"
 
 let private stringifySport =
@@ -92,8 +88,8 @@ let private insertSesh (conn: IDbConnection) (n: Normalized) =
     printfn $"Inserted sesh: {sesh.id} {sesh.date} {sesh.sport}"
     sesh
 
-let private insertKiteboardingSesh (conn: IDbConnection) normalized seshId =
-    let kbSesh =
+let private insertWindSeshDetails (conn: IDbConnection) normalized seshId =
+    let details =
         match normalized with
         | { WindAvg = Some windAvg
             WindGust = Some windGust
@@ -107,11 +103,11 @@ let private insertKiteboardingSesh (conn: IDbConnection) normalized seshId =
 
     let inserted =
         insert {
-            for t in kiteboardingSeshTable do
-                value kbSesh
+            for t in windSeshDetailsTable do
+                value details
                 excludeColumn t.id
         }
-        |> conn.InsertOutputAsync<KiteboardingSesh, KiteboardingSesh>
+        |> conn.InsertOutputAsync<WindSportSesh, WindSportSesh>
         |> Async.AwaitTask
         |> Async.RunSynchronously
         |> Seq.toList
@@ -119,40 +115,13 @@ let private insertKiteboardingSesh (conn: IDbConnection) normalized seshId =
 
     printfn $"-- Inserted kiteboarding sesh {inserted.id}"
 
-
-let private insertWingFoilingSesh (conn: IDbConnection) normalized seshId =
-    let wfSesh =
-        match normalized with
-        | { WindAvg = Some windAvg
-            WindGust = Some windGust
-            SeshType = Some seshType } ->
-            { id = -1
-              sesh_id = seshId
-              wind_avg = windAvg
-              wind_gust = windGust
-              sesh_type = stringifySeshType seshType }
-        | _ -> failwith $"Wing foiling sesh missing data: {normalized}"
-
-    let inserted =
-        insert {
-            for t in wingFoilingSeshTable do
-                value wfSesh
-                excludeColumn t.id
-        }
-        |> conn.InsertOutputAsync<WingFoilingSesh, WingFoilingSesh>
-        |> Async.AwaitTask
-        |> Async.RunSynchronously
-        |> Seq.toList
-        |> List.head
-
-    printfn $"-- Inserted wing foiling sesh {inserted.id}"
+let isWindSport normalized =
+    List.contains normalized.Sport [ Kiteboarding; WingFoiling; Parawinging ]
 
 let private insertDetails (conn: IDbConnection) (n: Normalized) (seshId: int) =
-    match n with
-    | { Sport = Kiteboarding } as kbSesh -> insertKiteboardingSesh conn kbSesh seshId
-    | { Sport = WingFoiling } as wfSesh -> insertWingFoilingSesh conn wfSesh seshId
-    | { Sport = Parawinging } as pwSesh -> insertWingFoilingSesh conn pwSesh seshId
-    | _ -> ()
+    if isWindSport n then
+        insertWindSeshDetails conn n seshId
+
 
 let private seshGearIds (n: Normalized) =
     [ kiteIds; wingIds; boardIds; foilIds ] |> List.collect ((|>) n)
