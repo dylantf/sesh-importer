@@ -1,3 +1,4 @@
+mod gear;
 mod parsers;
 
 fn import_path(year: &u32) -> String {
@@ -12,5 +13,7 @@ fn main() {
         .flat_map(|year| parsers::parse_file(year, &import_path(year)))
         .collect::<Vec<parsers::Normalized>>();
 
-    println!("{:?}", normalized);
+    let wings: Vec<Vec<u32>> = normalized.iter().map(gear::wing_ids).collect();
+
+    println!("{:?}", wings);
 }

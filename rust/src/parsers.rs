@@ -25,7 +25,7 @@ pub enum SeshType {
     Roundwinder,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum BoardType {
     Twintip,
     Hydrofoil,
@@ -38,19 +38,19 @@ pub enum BoardType {
 
 #[derive(Debug)]
 pub struct Normalized {
-    date: NaiveDate,
-    sport: Sport,
-    hours: f32,
-    wind_avg: Option<u32>,
-    wind_gust: Option<u32>,
-    kite_size: Option<Vec<String>>,
-    wing_size: Option<Vec<String>>,
-    sesh_type: Option<SeshType>,
-    board_type: Option<Vec<BoardType>>,
-    foil: Option<Vec<String>>,
-    board: Option<Vec<String>>,
-    location: Option<String>,
-    comments: Option<String>,
+    pub date: NaiveDate,
+    pub sport: Sport,
+    pub hours: f32,
+    pub wind_avg: Option<u32>,
+    pub wind_gust: Option<u32>,
+    pub kite_size: Option<Vec<String>>,
+    pub wing_size: Option<Vec<String>>,
+    pub sesh_type: Option<SeshType>,
+    pub board_type: Option<Vec<BoardType>>,
+    pub foil: Option<Vec<String>>,
+    pub board: Option<Vec<String>>,
+    pub location: Option<String>,
+    pub comments: Option<String>,
 }
 
 fn maybe_string(s: String) -> Option<String> {
