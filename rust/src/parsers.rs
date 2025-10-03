@@ -48,7 +48,7 @@ pub struct Normalized {
     pub sesh_type: Option<SeshType>,
     pub board_type: Option<Vec<BoardType>>,
     pub foil: Option<Vec<String>>,
-    pub board: Option<Vec<String>>,
+    pub foil_board: Option<String>,
     pub location: Option<String>,
     pub comments: Option<String>,
 }
@@ -186,7 +186,7 @@ fn parse_2012(mut reader: Reader<File>) -> Vec<Normalized> {
                 sesh_type: record.sesh_type.as_deref().and_then(parse_sesh_type),
                 board_type: None,
                 foil: None,
-                board: None,
+                foil_board: None,
                 location: None,
                 comments: record.comments,
             }
@@ -240,7 +240,7 @@ fn parse_2013(mut reader: Reader<File>) -> Vec<Normalized> {
                 sesh_type: record.sesh_type.as_deref().and_then(parse_sesh_type),
                 board_type: None,
                 foil: None,
-                board: None,
+                foil_board: None,
                 location: None,
                 comments: record.comments,
             }
@@ -297,7 +297,7 @@ fn parse_2014(mut reader: Reader<File>) -> Vec<Normalized> {
                 sesh_type: record.sesh_type.as_deref().and_then(parse_sesh_type),
                 board_type: None,
                 foil: None,
-                board: None,
+                foil_board: None,
                 location: record.location,
                 comments: record.comments,
             }
@@ -357,7 +357,7 @@ fn parse_2016(mut reader: Reader<File>) -> Vec<Normalized> {
                 sesh_type: record.sesh_type.as_deref().and_then(parse_sesh_type),
                 board_type: parse_board_types(record.board_type),
                 foil: None,
-                board: None,
+                foil_board: None,
                 location: record.location,
                 comments: record.comments,
             }
@@ -423,7 +423,7 @@ fn parse_2022(mut reader: Reader<File>) -> Vec<Normalized> {
                 sesh_type: record.sesh_type.as_deref().and_then(parse_sesh_type),
                 board_type: parse_board_types(record.board_type),
                 foil: record.foil.and_then(parse_many),
-                board: record.foil_board.and_then(parse_many),
+                foil_board: record.foil_board,
                 location: record.location,
                 comments: record.comments,
             }
@@ -492,7 +492,7 @@ fn parse_2024(mut reader: Reader<File>) -> Vec<Normalized> {
                 sesh_type: record.sesh_type.as_deref().and_then(parse_sesh_type),
                 board_type: parse_board_types(record.board_type),
                 foil: record.foil.and_then(parse_many),
-                board: record.foil_board.and_then(parse_many),
+                foil_board: record.foil_board,
                 location: record.location,
                 comments: record.comments,
             }
@@ -561,7 +561,7 @@ fn parse_2025(mut reader: Reader<File>) -> Vec<Normalized> {
                 sesh_type: record.sesh_type.as_deref().and_then(parse_sesh_type),
                 board_type: parse_board_types(record.board_type),
                 foil: record.foil.and_then(parse_many),
-                board: record.foil_board.and_then(parse_many),
+                foil_board: record.foil_board,
                 location: record.location,
                 comments: record.comments,
             }

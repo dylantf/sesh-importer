@@ -92,31 +92,41 @@ pub fn foil_ids(sesh: &Normalized) -> Vec<i32> {
     ids.into_iter().flatten().collect()
 }
 
-fn derive_board_id(date: NaiveDate, board_name: &Option<&str>) -> Option<i32> {
-    match board_name {
-        Some("Groove Skate") | None if after("2022-08-10", date) => Some(31),
-        Some("Rocket v2 85L") => Some(32),
-        Some("Rocket v2 60L") | Some("Rocket 60L") => Some(34),
-        Some("Flying Fish 40L") => Some(33),
-        Some("LF Galaxy") => Some(30),
-        None if between("2017-06-24", "2022-08-09", date) => Some(30),
-        None if before("2017-06-23", date) => Some(17),
+fn derive_board_id(
+    date: NaiveDate,
+    board_type: &BoardType,
+    board_name: Option<&str>,
+) -> Option<i32> {
+    use BoardType::*;
+    match board_type {
+        Hydrofoil => match board_name {
+            Some("Groove Skate") | None if after("2022-08-10", date) => Some(31),
+            Some("Rocket v2 85L") => Some(32),
+            Some("Rocket v2 60L") | Some("Rocket 60L") => Some(34),
+            Some("Flying Fish 40L") => Some(33),
+            Some("LF Galaxy") => Some(30),
+            None if between("2017-06-24", "2022-08-09", date) => Some(30),
+            None if before("2017-06-23", date) => Some(17),
+            _ => None,
+        },
+        Surfboard => Some(43),
+        Twintip => Some(44),
+        Skis => Some(45),
+        Snowboard => Some(46),
         _ => None,
     }
 }
 
 // I only care about foilboards, throw away everything else
 pub fn board_ids(sesh: &Normalized) -> Vec<i32> {
-    let ids = match (is_foil_sesh(sesh), &sesh.board) {
-        (false, _) => vec![],
-        (true, None) => vec![derive_board_id(sesh.date, &None)],
-        (true, Some(boards)) => boards
+    if let Some(board_types) = &sesh.board_type {
+        board_types
             .iter()
-            .map(|b| derive_board_id(sesh.date, &Some(b)))
-            .collect(),
-    };
-
-    ids.into_iter().flatten().collect()
+            .filter_map(|bt| derive_board_id(sesh.date, bt, sesh.foil_board.as_deref()))
+            .collect()
+    } else {
+        vec![]
+    }
 }
 
 fn derive_wing_id(sport: &Sport, date: NaiveDate, size: &str) -> Option<i32> {
