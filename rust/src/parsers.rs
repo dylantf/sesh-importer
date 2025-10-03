@@ -3,7 +3,7 @@ use csv::Reader;
 use serde::Deserialize;
 use std::fs::File;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Sport {
     Kiteboarding,
     Sup,
@@ -41,8 +41,8 @@ pub struct Normalized {
     pub date: NaiveDate,
     pub sport: Sport,
     pub hours: f32,
-    pub wind_avg: Option<u32>,
-    pub wind_gust: Option<u32>,
+    pub wind_avg: Option<i32>,
+    pub wind_gust: Option<i32>,
     pub kite_size: Option<Vec<String>>,
     pub wing_size: Option<Vec<String>>,
     pub sesh_type: Option<SeshType>,
@@ -152,10 +152,10 @@ struct Schema2012 {
     hours: f32,
 
     #[serde(rename(deserialize = "Lull (kn)"))]
-    wind_avg: Option<u32>,
+    wind_avg: Option<i32>,
 
     #[serde(rename(deserialize = "Gust (kn)"))]
-    wind_gust: Option<u32>,
+    wind_gust: Option<i32>,
 
     #[serde(rename(deserialize = "Kite Size"))]
     kite_size: Option<String>,
@@ -206,10 +206,10 @@ struct Schema2013 {
     hours: f32,
 
     #[serde(rename(deserialize = "Lull"))]
-    wind_avg: Option<u32>,
+    wind_avg: Option<i32>,
 
     #[serde(rename(deserialize = "Gust"))]
-    wind_gust: Option<u32>,
+    wind_gust: Option<i32>,
 
     #[serde(rename(deserialize = "Kite"))]
     kite_size: Option<String>,
@@ -260,10 +260,10 @@ struct Schema2014 {
     hours: f32,
 
     #[serde(rename(deserialize = "Lull (kn)"))]
-    wind_avg: Option<u32>,
+    wind_avg: Option<i32>,
 
     #[serde(rename(deserialize = "Gust (kn)"))]
-    wind_gust: Option<u32>,
+    wind_gust: Option<i32>,
 
     #[serde(rename(deserialize = "Kite Size"))]
     kite_size: Option<String>,
@@ -317,10 +317,10 @@ struct Schema2016 {
     hours: f32,
 
     #[serde(rename(deserialize = "Lull (kts)"))]
-    wind_avg: Option<u32>,
+    wind_avg: Option<i32>,
 
     #[serde(rename(deserialize = "Gust (kts)"))]
-    wind_gust: Option<u32>,
+    wind_gust: Option<i32>,
 
     #[serde(rename(deserialize = "Kite"))]
     kite_size: Option<String>,
@@ -377,10 +377,10 @@ struct Schema2022 {
     hours: f32,
 
     #[serde(rename(deserialize = "Avg (kts)"))]
-    wind_avg: Option<u32>,
+    wind_avg: Option<i32>,
 
     #[serde(rename(deserialize = "Gust (kts)"))]
-    wind_gust: Option<u32>,
+    wind_gust: Option<i32>,
 
     #[serde(rename(deserialize = "Kite"))]
     kite_size: Option<String>,
@@ -443,10 +443,10 @@ struct Schema2024 {
     hours: f32,
 
     #[serde(rename(deserialize = "Avg (kts)"))]
-    wind_avg: Option<u32>,
+    wind_avg: Option<i32>,
 
     #[serde(rename(deserialize = "Gust (kts)"))]
-    wind_gust: Option<u32>,
+    wind_gust: Option<i32>,
 
     #[serde(rename(deserialize = "Kite"))]
     kite_size: Option<String>,
@@ -512,10 +512,10 @@ struct Schema2025 {
     hours: f32,
 
     #[serde(rename(deserialize = "Avg (kts)"))]
-    wind_avg: Option<u32>,
+    wind_avg: Option<i32>,
 
     #[serde(rename(deserialize = "Gust (kts)"))]
-    wind_gust: Option<u32>,
+    wind_gust: Option<i32>,
 
     #[serde(rename(deserialize = "Kite"))]
     kite_size: Option<String>,
@@ -569,7 +569,7 @@ fn parse_2025(mut reader: Reader<File>) -> Vec<Normalized> {
         .collect::<Vec<Normalized>>()
 }
 
-pub fn parse_file(year: &u32, path: &str) -> Vec<Normalized> {
+pub fn parse_file(year: &i32, path: &str) -> Vec<Normalized> {
     let reader = csv::ReaderBuilder::new().from_path(path).unwrap();
 
     match year {

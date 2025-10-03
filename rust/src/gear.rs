@@ -17,7 +17,7 @@ fn between(start: &str, end: &str, sesh_date: NaiveDate) -> bool {
     after(start, sesh_date) && before(end, sesh_date)
 }
 
-fn derive_kite_id(sesh_date: NaiveDate, kite_size: &str) -> Option<u32> {
+fn derive_kite_id(sesh_date: NaiveDate, kite_size: &str) -> Option<i32> {
     match kite_size {
         "12" if before("2013-01-15", sesh_date) => Some(1),
         "8" if before("2013-01-15", sesh_date) => Some(2),
@@ -38,7 +38,7 @@ fn derive_kite_id(sesh_date: NaiveDate, kite_size: &str) -> Option<u32> {
     }
 }
 
-fn derive_foil_id(d: NaiveDate, foil_name: &Option<&str>) -> Option<u32> {
+fn derive_foil_id(d: NaiveDate, foil_name: &Option<&str>) -> Option<i32> {
     match foil_name {
         None if before("2019-05-26", d) => Some(17),
         None if after("2019-05-27", d) => Some(18),
@@ -57,7 +57,7 @@ fn derive_foil_id(d: NaiveDate, foil_name: &Option<&str>) -> Option<u32> {
     }
 }
 
-pub fn kite_ids(sesh: &Normalized) -> Vec<u32> {
+pub fn kite_ids(sesh: &Normalized) -> Vec<i32> {
     match &sesh.kite_size {
         None => vec![],
         Some(kites) => kites
@@ -79,7 +79,7 @@ fn is_foil_sesh(sesh: &Normalized) -> bool {
     }
 }
 
-pub fn foil_ids(sesh: &Normalized) -> Vec<u32> {
+pub fn foil_ids(sesh: &Normalized) -> Vec<i32> {
     let ids = match (is_foil_sesh(sesh), &sesh.foil) {
         (true, None) => vec![derive_foil_id(sesh.date, &None)],
         (true, Some(foil_names)) => foil_names
@@ -92,7 +92,7 @@ pub fn foil_ids(sesh: &Normalized) -> Vec<u32> {
     ids.into_iter().flatten().collect()
 }
 
-fn derive_board_id(date: NaiveDate, board_name: &Option<&str>) -> Option<u32> {
+fn derive_board_id(date: NaiveDate, board_name: &Option<&str>) -> Option<i32> {
     match board_name {
         Some("Groove Skate") | None if after("2022-08-10", date) => Some(31),
         Some("Rocket v2 85L") => Some(32),
@@ -106,7 +106,7 @@ fn derive_board_id(date: NaiveDate, board_name: &Option<&str>) -> Option<u32> {
 }
 
 // I only care about foilboards, throw away everything else
-pub fn board_ids(sesh: &Normalized) -> Vec<u32> {
+pub fn board_ids(sesh: &Normalized) -> Vec<i32> {
     let ids = match (is_foil_sesh(sesh), &sesh.board) {
         (false, _) => vec![],
         (true, None) => vec![derive_board_id(sesh.date, &None)],
@@ -119,7 +119,7 @@ pub fn board_ids(sesh: &Normalized) -> Vec<u32> {
     ids.into_iter().flatten().collect()
 }
 
-fn derive_wing_id(sport: &Sport, date: NaiveDate, size: &str) -> Option<u32> {
+fn derive_wing_id(sport: &Sport, date: NaiveDate, size: &str) -> Option<i32> {
     use Sport::*;
 
     match (sport, size) {
@@ -135,7 +135,7 @@ fn derive_wing_id(sport: &Sport, date: NaiveDate, size: &str) -> Option<u32> {
     }
 }
 
-pub fn wing_ids(sesh: &Normalized) -> Vec<u32> {
+pub fn wing_ids(sesh: &Normalized) -> Vec<i32> {
     match (&sesh.sport, &sesh.wing_size) {
         (Sport::WingFoiling, Some(sizes)) | (Sport::Parawinging, Some(sizes)) => sizes
             .iter()
