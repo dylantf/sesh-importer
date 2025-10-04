@@ -19,8 +19,8 @@ after dateStr d = d >= read dateStr
 between :: (String, String) -> Day -> Bool
 between (start, end) d = d >= read start && d <= read end
 
-kiteId :: (Day, String) -> Maybe Int
-kiteId (d, kiteSize) =
+kiteId :: Day -> String -> Maybe Int
+kiteId d kiteSize =
   case kiteSize of
     "12" | before "2013-01-15" d -> Just 1
     "8" | before "2013-01-15" d -> Just 2
@@ -37,30 +37,29 @@ kiteId (d, kiteSize) =
     "7" | between ("2019-10-05", "2020-12-31") d -> Just 14
     "9" | after "2021-01-01" d -> Just 15
     "7" | after "2021-01-01" d -> Just 16
-    _ -> Nothing
+    _ -> error $ "Missing gear ID for `" ++ kiteSize ++ "` on date: " ++ show d
 
 kiteIds :: Normalized -> [Int]
-kiteIds row =
-  case (sport row, kiteSize row) of
-    (Kiteboarding, Just kiteSizes) ->
-      mapMaybe (\sz -> kiteId (date row, sz)) kiteSizes
-    _ -> []
+kiteIds row
+  | sport row /= Kiteboarding = []
+  | otherwise = foldMap (mapMaybe (kiteId (date row))) (kiteSize row)
 
 hydrofoilId :: Day -> Maybe String -> Maybe Int
-hydrofoilId d foilName = case foilName of
-  Nothing | before "2019-05-26" d -> Just 17
-  Nothing | after "2019-05-27" d -> Just 18
-  Just "Thruster" -> Just 18
-  Just "ART 999" -> Just 19
-  Just "ART 799" -> Just 20
-  Just "Phantom 1480" -> Just 21
-  Just "Seven Seas 1200" -> Just 22
-  Just "Phantom-S 840" -> Just 23
-  Just "Eagle 890" -> Just 24
-  Just "Eagle 990" -> Just 25
-  Just "Ypra-S 785" -> Just 26
-  Just "Ypra-S 1000" -> Just 27
-  Just "Veloce 890" -> Just 28
+hydrofoilId d Nothing
+  | before "2019-05-26" d = Just 17
+  | otherwise = Just 18
+hydrofoilId _ (Just foilName) = case foilName of
+  "Thruster" -> Just 18
+  "ART 999" -> Just 19
+  "ART 799" -> Just 20
+  "Phantom 1480" -> Just 21
+  "Seven Seas 1200" -> Just 22
+  "Phantom-S 840" -> Just 23
+  "Eagle 890" -> Just 24
+  "Eagle 990" -> Just 25
+  "Ypra-S 785" -> Just 26
+  "Ypra-S 1000" -> Just 27
+  "Veloce 890" -> Just 28
   _ -> Nothing
 
 isFoilSesh :: Normalized -> Bool
@@ -69,29 +68,30 @@ isFoilSesh row = case boardType row of
   Nothing -> False
 
 hydrofoilIds :: Normalized -> [Int]
-hydrofoilIds row =
-  case (isFoilSesh row, foil row) of
-    (False, _) -> []
-    (True, Nothing) -> maybeToList $ hydrofoilId seshDate Nothing
-    (True, Just foils) -> mapMaybe (hydrofoilId seshDate . Just) foils
+hydrofoilIds row
+  | not $ isFoilSesh row = []
+  | otherwise = case foil row of
+      Nothing -> maybeToList $ hydrofoilId seshDate Nothing
+      Just foils -> mapMaybe (hydrofoilId seshDate . Just) foils
   where
     seshDate = date row
 
 boardId :: Day -> Maybe String -> BoardType -> Maybe Int
-boardId d boardName bt =
+boardId date boardName Hydrofoil =
+  case boardName of
+    Nothing
+      | between ("2017-06-24", "2022-08-09") date -> Just 30
+      | before "2017-06-23" date -> Just 17
+      | after "2022-08-10" date -> Just 31
+    Just "Groove Skate" -> Just 31
+    Just "Rocket v2 85L" -> Just 32
+    Just "Rocket v2 60L" -> Just 34
+    Just "Rocket 60L" -> Just 34
+    Just "Flying Fish 40L" -> Just 33
+    Just "LF Galaxy" -> Just 30
+    _ -> Nothing
+boardId _ _ bt =
   case bt of
-    Hydrofoil ->
-      case boardName of
-        Just "Groove Skate" -> Just 31
-        Nothing | after "2022-08-10" d -> Just 31
-        Just "Rocket v2 85L" -> Just 32
-        Just "Rocket v2 60L" -> Just 34
-        Just "Rocket 60L" -> Just 34
-        Just "Flying Fish 40L" -> Just 33
-        Just "LF Galaxy" -> Just 30
-        Nothing | between ("2017-06-24", "2022-08-09") d -> Just 30
-        Nothing | before "2017-06-23" d -> Just 17
-        _ -> Nothing
     Surfboard -> Just 43
     Twintip -> Just 44
     Skis -> Just 45
@@ -99,12 +99,10 @@ boardId d boardName bt =
     _ -> Nothing
 
 boardIds :: Normalized -> [Int]
-boardIds row = case boardType row of
-  Just boardTypes -> mapMaybe (boardId seshDate boardName) boardTypes
-  Nothing -> []
+boardIds row =
+  foldMap (mapMaybe mapBoardId) (boardType row)
   where
-    seshDate = date row
-    boardName = board row
+    mapBoardId = boardId (date row) (board row)
 
 wingId :: (Sport, Day, String) -> Maybe Int
 wingId (sport, day, size) = case (sport, size) of
@@ -120,13 +118,12 @@ wingId (sport, day, size) = case (sport, size) of
   (_, "3m") -> Just 41
   _ -> Nothing
 
+usesWing :: Sport -> Bool
+usesWing sport
+  | sport `elem` [WingFoiling, Parawinging] = True
+  | otherwise = False
+
 wingIds :: Normalized -> [Int]
-wingIds row =
-  let usesWing = case sport row of
-        WingFoiling -> True
-        Parawinging -> True
-        _ -> False
-   in case (usesWing, wingSize row) of
-        (True, Just wingSizes) ->
-          mapMaybe (\size -> wingId (sport row, date row, size)) wingSizes
-        _ -> []
+wingIds row
+  | not $ usesWing $ sport row = []
+  | otherwise = foldMap (mapMaybe (wingId . (sport row,date row,))) (wingSize row)

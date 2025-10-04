@@ -3,20 +3,7 @@ module Parsers
     Sport (..),
     SeshType (..),
     BoardType (..),
-    parse2012,
-    parse2013,
-    parse2014,
-    parse2015,
-    parse2016,
-    parse2017,
-    parse2018,
-    parse2019,
-    parse2020,
-    parse2021,
-    parse2022,
-    parse2023,
-    parse2024,
-    parse2025,
+    parseFile,
   )
 where
 
@@ -41,7 +28,7 @@ data Sport
   | Surfing
   | WingFoiling
   | Parawinging
-  deriving (Show)
+  deriving (Show, Eq)
 
 data SeshType
   = Spot
@@ -128,7 +115,7 @@ normalizeSeshType s = case s of
   Just "Spot" -> Just Spot
   Just "Downwinder" -> Just Downwinder
   Just "Roundwinder" -> Just Roundwinder
-  Just other -> error $ "Unhandled session type: " ++ other
+  Just other -> error $ "Unhandled session type: `" ++ other ++ "`"
 
 normalizeBoardType :: String -> BoardType
 normalizeBoardType bt = case trim bt of
@@ -147,13 +134,11 @@ parseDate :: String -> Day
 parseDate dateStr =
   case parseTimeM True defaultTimeLocale "%-m/%-d/%Y" dateStr of
     Just day -> day
-    Nothing -> error $ "Could not parse date: " ++ dateStr
+    Nothing -> error $ "Could not parse date: `" ++ dateStr ++ "`"
 
 -- Parse and normalize: some kites contain "m" in the size, but some don't
 parseKiteSize :: String -> Maybe [String]
-parseKiteSize str = map normalizeSize <$> parseMany str
-  where
-    normalizeSize = replace "m" ""
+parseKiteSize str = map (replace "m" "") <$> parseMany str
 
 -- Parse maybe-CSV list of strings into board types
 parseBoardType :: String -> Maybe [BoardType]
@@ -290,21 +275,6 @@ instance FromNamedRecord Normalized2016 where
 parse2016 :: String -> IO [Normalized]
 parse2016 path = map normalize2016 <$> readCsvFile path
 
-parse2017 :: String -> IO [Normalized]
-parse2017 path = map normalize2016 <$> readCsvFile path
-
-parse2018 :: String -> IO [Normalized]
-parse2018 path = map normalize2016 <$> readCsvFile path
-
-parse2019 :: String -> IO [Normalized]
-parse2019 path = map normalize2016 <$> readCsvFile path
-
-parse2020 :: String -> IO [Normalized]
-parse2020 path = map normalize2016 <$> readCsvFile path
-
-parse2021 :: String -> IO [Normalized]
-parse2021 path = map normalize2016 <$> readCsvFile path
-
 -- 2022 (Addition of foil and foilboard)
 
 newtype Normalized2022 = Normalized2022 {normalize2022 :: Normalized}
@@ -330,12 +300,6 @@ instance FromNamedRecord Normalized2022 where
 
 parse2022 :: String -> IO [Normalized]
 parse2022 path = map normalize2022 <$> readCsvFile path
-
--- 2023
--- The column order is different but have the same names as 2022
-
-parse2023 :: String -> IO [Normalized]
-parse2023 path = map normalize2022 <$> readCsvFile path
 
 -- 2024 (Addition of wing !)
 
@@ -364,7 +328,7 @@ parse2024 :: String -> IO [Normalized]
 parse2024 path = map normalize2024 <$> readCsvFile path
 
 -- 2025
--- ,Date,Sport,Hours,Avg (kts),Gust (kts),Kite,Wing,Board Type,Foil,Board,Location,Type,Comments
+
 newtype Normalized2025 = Normalized2025 {normalize2025 :: Normalized}
 
 instance FromNamedRecord Normalized2025 where
@@ -388,3 +352,24 @@ instance FromNamedRecord Normalized2025 where
 
 parse2025 :: String -> IO [Normalized]
 parse2025 path = map normalize2025 <$> readCsvFile path
+
+parser :: Int -> (String -> IO [Normalized])
+parser year = case year of
+  2012 -> parse2012
+  2013 -> parse2013
+  2014 -> parse2014
+  2015 -> parse2015
+  2016 -> parse2016
+  2017 -> parse2016
+  2018 -> parse2016
+  2019 -> parse2016
+  2020 -> parse2016
+  2021 -> parse2016
+  2022 -> parse2022
+  2023 -> parse2022
+  2024 -> parse2024
+  2025 -> parse2025
+  _ -> error $ "Parser not implemented for year: `" ++ show year ++ "`!"
+
+parseFile :: String -> Int -> IO [Normalized]
+parseFile path year = parser year path
