@@ -117,7 +117,6 @@ fn derive_board_id(
     }
 }
 
-// I only care about foilboards, throw away everything else
 pub fn board_ids(sesh: &Normalized) -> Vec<i32> {
     if let Some(board_types) = &sesh.board_type {
         board_types

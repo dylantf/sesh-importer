@@ -2,6 +2,7 @@ module Parsers
   ( Normalized (..),
     Sport (..),
     SeshType (..),
+    BoardType (..),
     parse2012,
     parse2013,
     parse2014,
@@ -20,14 +21,17 @@ module Parsers
 where
 
 import Data.ByteString.Lazy qualified as BL
+import Data.Char (isSpace)
 import Data.Csv
 import Data.Functor ((<&>))
+import Data.List
+import Data.List.Split
 import Data.Time
 import Data.Vector qualified as V
 
 data Sport
   = Kiteboarding
-  | SUP
+  | Sup
   | Skiing
   | Snowboarding
   | MountainBiking
@@ -45,17 +49,27 @@ data SeshType
   | Roundwinder
   deriving (Show)
 
+data BoardType
+  = Twintip
+  | Hydrofoil
+  | Surfboard
+  | SupBoard
+  | Skis
+  | Snowboard
+  | Other
+  deriving (Show, Eq)
+
 data Normalized = Normalized
   { date :: Day,
     sport :: Sport,
     hours :: Double,
     windAvg :: Maybe Int,
     windGust :: Maybe Int,
-    kiteSize :: Maybe String,
-    wingSize :: Maybe String,
+    kiteSize :: Maybe [String],
+    wingSize :: Maybe [String],
     seshType :: Maybe SeshType,
-    boardType :: Maybe String, -- Needs to be string because there are multiple logged (csv)
-    foil :: Maybe String,
+    boardType :: Maybe [BoardType],
+    foil :: Maybe [String],
     board :: Maybe String,
     location :: Maybe String,
     comments :: String
@@ -69,10 +83,33 @@ readCsvFile path = do
     Left err -> error $ "Error parsing CSV: " ++ err
     Right (_, rows) -> pure $ V.toList rows
 
+trim :: String -> String
+trim = dropWhile isSpace . dropWhileEnd isSpace
+
+replace :: String -> String -> String -> String
+replace from with = go
+  where
+    go [] = []
+    go s@(x : xs)
+      | from `isPrefixOf` s = with ++ go (drop (length from) s)
+      | otherwise = x : go xs
+
+maybeString :: String -> Maybe String
+maybeString str = case trim str of
+  "" -> Nothing
+  s -> Just s
+
+parseMany :: String -> Maybe [String]
+parseMany str =
+  case splitOn "," . trim <$> maybeString str of
+    Nothing -> Nothing
+    Just [] -> Nothing
+    Just xs -> Just xs
+
 normalizeSport :: String -> Sport
 normalizeSport s = case s of
   "Kiteboarding" -> Kiteboarding
-  "SUP" -> SUP
+  "SUP" -> Sup
   "Skiing" -> Skiing
   "Snowboarding" -> Snowboarding
   "Mountain Biking" -> MountainBiking
@@ -93,11 +130,34 @@ normalizeSeshType s = case s of
   Just "Roundwinder" -> Just Roundwinder
   Just other -> error $ "Unhandled session type: " ++ other
 
+normalizeBoardType :: String -> BoardType
+normalizeBoardType bt = case trim bt of
+  "Twintip" -> Twintip
+  "Twintp" -> Twintip
+  "Hydrofoil" -> Hydrofoil
+  "Surfboard" -> Surfboard
+  "Strapless" -> Surfboard
+  "SUP" -> SupBoard
+  "Skis" -> Skis
+  "Snowboard" -> Snowboard
+  "Skim" -> Other
+  other -> error $ "Unhandled board type `" ++ other ++ "`"
+
 parseDate :: String -> Day
 parseDate dateStr =
   case parseTimeM True defaultTimeLocale "%-m/%-d/%Y" dateStr of
     Just day -> day
     Nothing -> error $ "Could not parse date: " ++ dateStr
+
+-- Parse and normalize: some kites contain "m" in the size, but some don't
+parseKiteSize :: String -> Maybe [String]
+parseKiteSize str = map normalizeSize <$> parseMany str
+  where
+    normalizeSize = replace "m" ""
+
+-- Parse maybe-CSV list of strings into board types
+parseBoardType :: String -> Maybe [BoardType]
+parseBoardType bt = map normalizeBoardType <$> parseMany bt
 
 -- 2012
 
@@ -112,7 +172,7 @@ instance FromNamedRecord Normalized2012 where
         <*> r .: "Hours"
         <*> (Just <$> r .: "Lull (kn)")
         <*> (Just <$> r .: "Gust (kn)")
-        <*> (Just <$> r .: "Kite Size")
+        <*> (r .: "Kite Size" <&> parseKiteSize)
         <*> pure Nothing
         <*> (normalizeSeshType . Just <$> r .: "Type")
         <*> pure Nothing
@@ -138,7 +198,7 @@ instance FromNamedRecord Normalized2013 where
         <*> r .: "Hours"
         <*> r .: "Lull"
         <*> r .: "Gust"
-        <*> r .: "Kite"
+        <*> (r .: "Kite" <&> parseKiteSize)
         <*> pure Nothing
         <*> (r .: "Type" <&> normalizeSeshType)
         <*> pure Nothing
@@ -164,7 +224,7 @@ instance FromNamedRecord Normalized2014 where
         <*> r .: "Hours"
         <*> r .: "Lull (kn)"
         <*> r .: "Gust (kn)"
-        <*> r .: "Kite Size"
+        <*> (r .: "Kite Size" <&> parseKiteSize)
         <*> pure Nothing
         <*> (r .: "Type" <&> normalizeSeshType)
         <*> pure Nothing
@@ -190,7 +250,7 @@ instance FromNamedRecord Normalized2015 where
         <*> r .: "Hours"
         <*> r .: "Lull"
         <*> r .: "Gust"
-        <*> r .: "Kite"
+        <*> (r .: "Kite" <&> parseKiteSize)
         <*> pure Nothing
         <*> (r .: "Type" <&> normalizeSeshType)
         <*> pure Nothing
@@ -215,10 +275,10 @@ normalize2016Record r = do
     <*> r .: "Hours"
     <*> r .: "Lull (kts)"
     <*> r .: "Gust (kts)"
-    <*> r .: "Kite"
+    <*> (r .: "Kite" <&> parseKiteSize)
     <*> pure Nothing
     <*> (r .: "Type" <&> normalizeSeshType)
-    <*> (r .: "Board")
+    <*> (r .: "Board" <&> parseBoardType)
     <*> pure Nothing
     <*> pure Nothing
     <*> r .: "Location"
@@ -258,11 +318,11 @@ instance FromNamedRecord Normalized2022 where
         <*> r .: "Hours"
         <*> r .: "Avg (kts)"
         <*> r .: "Gust (kts)"
-        <*> r .: "Kite"
+        <*> (r .: "Kite" <&> parseKiteSize)
         <*> pure Nothing
         <*> (r .: "Type" <&> normalizeSeshType)
-        <*> (r .: "Board Type")
-        <*> r .: "Foil"
+        <*> (r .: "Board Type" <&> parseBoardType)
+        <*> (r .: "Foil" <&> parseMany)
         <*> r .: "Foil Board" -- I only tracked foilboards for 2022
         <*> r .: "Location"
         <*> r .: "Comments"
@@ -290,11 +350,11 @@ instance FromNamedRecord Normalized2024 where
         <*> r .: "Hours"
         <*> r .: "Avg (kts)"
         <*> r .: "Gust (kts)"
-        <*> r .: "Kite"
-        <*> r .: "Wing"
+        <*> (r .: "Kite" <&> parseKiteSize)
+        <*> (r .: "Wing" <&> parseMany)
         <*> (r .: "Type" <&> normalizeSeshType)
-        <*> (r .: "Board Type")
-        <*> r .: "Foil"
+        <*> (r .: "Board Type" <&> parseBoardType)
+        <*> (r .: "Foil" <&> parseMany)
         <*> r .: "Foil Board" -- I only tracked foilboards for 2024
         <*> r .: "Location"
         <*> r .: "Comments"
@@ -316,11 +376,11 @@ instance FromNamedRecord Normalized2025 where
         <*> r .: "Hours"
         <*> r .: "Avg (kts)"
         <*> r .: "Gust (kts)"
-        <*> r .: "Kite"
-        <*> r .: "Wing"
+        <*> (r .: "Kite" <&> parseKiteSize)
+        <*> (r .: "Wing" <&> parseMany)
         <*> (r .: "Type" <&> normalizeSeshType)
-        <*> (r .: "Board Type")
-        <*> r .: "Foil"
+        <*> (r .: "Board Type" <&> parseBoardType)
+        <*> (r .: "Foil" <&> parseMany)
         <*> r .: "Board"
         <*> r .: "Location"
         <*> r .: "Comments"

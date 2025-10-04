@@ -11,7 +11,7 @@ userId = 1
 sportToString :: Sport -> String
 sportToString sport = case sport of
   Kiteboarding -> "kiteboarding"
-  SUP -> "sup"
+  Sup -> "sup"
   Skiing -> "skiing"
   Snowboarding -> "snowboarding"
   MountainBiking -> "mountain biking"
