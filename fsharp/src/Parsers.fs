@@ -41,7 +41,7 @@ type Normalized =
       SeshType: SeshType option
       BoardType: BoardType list option
       Foil: string list option
-      Board: string list option
+      Board: string option
       Location: string option
       Comments: string option }
 
@@ -53,12 +53,21 @@ let private maybeString (s: string) : string option =
 let private parseInt = maybeString >> Option.map int
 
 let private parseMany (s: string) =
-    s
-    |> maybeString
-    |> Option.map (fun s -> s.Split ',' |> Array.map (fun s -> s.Trim()))
-    |> Option.map Array.toList
+    let split (s: string) = s.Split "," |> Array.toList
+    let trim (s: string) = s.Trim()
 
-let private parseSport =
+    let items =
+        s
+        |> maybeString
+        |> Option.map (split >> List.map trim)
+        |> Option.map (List.map maybeString >> List.choose id)
+
+    match items with
+    | None -> None
+    | Some [] -> None
+    | Some xs -> Some xs
+
+let private normalizeSport =
     function
     | "Kiteboarding" -> Kiteboarding
     | "SUP" -> Sport.SUP
@@ -74,25 +83,28 @@ let private parseSport =
     | "Parawinging" -> Parawinging
     | other -> failwith $"Unhandled sport: `{other}`"
 
-let private parseSeshType =
+let private normalizeSeshType =
     function
     | Some "Spot" -> Some Spot
     | Some "Downwinder" -> Some Downwinder
     | Some "Roundwinder" -> Some Roundwinder
     | _ -> None
 
-let private parseBoardType =
+let private normalizeBoardType =
     function
     | "Twintip"
     | "Twintp" -> Twintip // Fix typo
     | "Hydrofoil" -> Hydrofoil
     | "Surfboard"
     | "Strapless" -> Surfboard
-    | "SUP" -> BoardType.SUP
+    | "SUP" -> SUP
     | "Skis" -> Skis
     | "Snowboard" -> Snowboard
     | "Skim" -> Other
     | other -> failwith $"Unhandled board type: `{other}`"
+
+let private parseBoardTypes s =
+    s |> parseMany |> Option.map (List.map normalizeBoardType)
 
 // Some kite sizes are defined as "12m" and others just "12"
 let private normalizeKiteSize (kites: string list option) =
@@ -100,13 +112,13 @@ let private normalizeKiteSize (kites: string list option) =
 
 let private parse2012 (row: CsvRow) : Normalized =
     { Date = row.GetColumn "Date" |> DateTime.Parse
-      Sport = row.GetColumn "Sport" |> parseSport
+      Sport = row.GetColumn "Sport" |> normalizeSport
       Hours = row.GetColumn "Hours" |> double
       WindAvg = row.GetColumn "Lull (kn)" |> parseInt
       WindGust = row.GetColumn "Gust (kn)" |> parseInt
       KiteSize = row.GetColumn "Kite Size" |> parseMany |> normalizeKiteSize
       WingSize = None
-      SeshType = row.GetColumn "Type" |> maybeString |> parseSeshType
+      SeshType = row.GetColumn "Type" |> maybeString |> normalizeSeshType
       BoardType = None
       Foil = None
       Board = None
@@ -115,13 +127,13 @@ let private parse2012 (row: CsvRow) : Normalized =
 
 let private parse2013 (row: CsvRow) : Normalized =
     { Date = row.GetColumn "Date" |> DateTime.Parse
-      Sport = row.GetColumn "Sport" |> parseSport
+      Sport = row.GetColumn "Sport" |> normalizeSport
       Hours = row.GetColumn "Hours" |> double
       WindAvg = row.GetColumn "Lull" |> parseInt
       WindGust = row.GetColumn "Gust" |> parseInt
       KiteSize = row.GetColumn "Kite" |> parseMany |> normalizeKiteSize
       WingSize = None
-      SeshType = row.GetColumn "Type" |> maybeString |> parseSeshType
+      SeshType = row.GetColumn "Type" |> maybeString |> normalizeSeshType
       BoardType = None
       Foil = None
       Board = None
@@ -130,13 +142,13 @@ let private parse2013 (row: CsvRow) : Normalized =
 
 let private parse2014 (row: CsvRow) : Normalized =
     { Date = row.GetColumn "Day" |> DateTime.Parse
-      Sport = row.GetColumn "Sport" |> parseSport
+      Sport = row.GetColumn "Sport" |> normalizeSport
       Hours = row.GetColumn "Hours" |> double
       WindAvg = row.GetColumn "Lull (kn)" |> parseInt
       WindGust = row.GetColumn "Gust (kn)" |> parseInt
       KiteSize = row.GetColumn "Kite Size" |> parseMany |> normalizeKiteSize
       WingSize = None
-      SeshType = row.GetColumn "Type" |> maybeString |> parseSeshType
+      SeshType = row.GetColumn "Type" |> maybeString |> normalizeSeshType
       BoardType = None
       Foil = None
       Board = None
@@ -145,14 +157,14 @@ let private parse2014 (row: CsvRow) : Normalized =
 
 let private parse2016 (row: CsvRow) : Normalized =
     { Date = row.GetColumn "Date" |> DateTime.Parse
-      Sport = row.GetColumn "Sport" |> parseSport
+      Sport = row.GetColumn "Sport" |> normalizeSport
       Hours = row.GetColumn "Hours" |> double
       WindAvg = row.GetColumn "Lull (kts)" |> parseInt
       WindGust = row.GetColumn "Gust (kts)" |> parseInt
       KiteSize = row.GetColumn "Kite" |> parseMany |> normalizeKiteSize
       WingSize = None
-      SeshType = row.GetColumn "Type" |> maybeString |> parseSeshType
-      BoardType = row.GetColumn "Board" |> parseMany |> Option.map (List.map parseBoardType)
+      SeshType = row.GetColumn "Type" |> maybeString |> normalizeSeshType
+      BoardType = row.GetColumn "Board" |> parseBoardTypes
       Foil = None
       Board = None
       Location = row.GetColumn "Location" |> maybeString
@@ -160,46 +172,46 @@ let private parse2016 (row: CsvRow) : Normalized =
 
 let private parse2022 (row: CsvRow) : Normalized =
     { Date = row.GetColumn "Date" |> DateTime.Parse
-      Sport = row.GetColumn "Sport" |> parseSport
+      Sport = row.GetColumn "Sport" |> normalizeSport
       Hours = row.GetColumn "Hours" |> double
       WindAvg = row.GetColumn "Avg (kts)" |> parseInt
       WindGust = row.GetColumn "Gust (kts)" |> parseInt
       KiteSize = row.GetColumn "Kite" |> parseMany |> normalizeKiteSize
       WingSize = None
-      SeshType = row.GetColumn "Type" |> maybeString |> parseSeshType
-      BoardType = row.GetColumn "Board Type" |> parseMany |> Option.map (List.map parseBoardType)
+      SeshType = row.GetColumn "Type" |> maybeString |> normalizeSeshType
+      BoardType = row.GetColumn "Board Type" |> parseBoardTypes
       Foil = row.GetColumn "Foil" |> parseMany
-      Board = row.GetColumn "Foil Board" |> parseMany
+      Board = row.GetColumn "Foil Board" |> maybeString
       Location = row.GetColumn "Location" |> maybeString
       Comments = row.GetColumn "Comments" |> maybeString }
 
 let private parse2024 (row: CsvRow) : Normalized =
     { Date = row.GetColumn "Date" |> DateTime.Parse
-      Sport = row.GetColumn "Sport" |> parseSport
+      Sport = row.GetColumn "Sport" |> normalizeSport
       Hours = row.GetColumn "Hours" |> double
       WindAvg = row.GetColumn "Avg (kts)" |> parseInt
       WindGust = row.GetColumn "Gust (kts)" |> parseInt
       KiteSize = row.GetColumn "Kite" |> parseMany |> normalizeKiteSize
       WingSize = row.GetColumn "Wing" |> parseMany
-      SeshType = row.GetColumn "Type" |> maybeString |> parseSeshType
-      BoardType = row.GetColumn "Board Type" |> parseMany |> Option.map (List.map parseBoardType)
+      SeshType = row.GetColumn "Type" |> maybeString |> normalizeSeshType
+      BoardType = row.GetColumn "Board Type" |> parseBoardTypes
       Foil = row.GetColumn "Foil" |> parseMany
-      Board = row.GetColumn "Foil Board" |> parseMany
+      Board = row.GetColumn "Foil Board" |> maybeString
       Location = row.GetColumn "Location" |> maybeString
       Comments = row.GetColumn "Comments" |> maybeString }
 
 let private parse2025 (row: CsvRow) : Normalized =
     { Date = row.GetColumn "Date" |> DateTime.Parse
-      Sport = row.GetColumn "Sport" |> parseSport
+      Sport = row.GetColumn "Sport" |> normalizeSport
       Hours = row.GetColumn "Hours" |> double
       WindAvg = row.GetColumn "Avg (kts)" |> parseInt
       WindGust = row.GetColumn "Gust (kts)" |> parseInt
       KiteSize = row.GetColumn "Kite" |> parseMany |> normalizeKiteSize
       WingSize = row.GetColumn "Wing" |> parseMany
-      SeshType = row.GetColumn "Type" |> maybeString |> parseSeshType
-      BoardType = row.GetColumn "Board Type" |> parseMany |> Option.map (List.map parseBoardType)
+      SeshType = row.GetColumn "Type" |> maybeString |> normalizeSeshType
+      BoardType = row.GetColumn "Board Type" |> parseBoardTypes
       Foil = row.GetColumn "Foil" |> parseMany
-      Board = row.GetColumn "Board" |> parseMany
+      Board = row.GetColumn "Board" |> maybeString
       Location = row.GetColumn "Location" |> maybeString
       Comments = row.GetColumn "Comments" |> maybeString }
 

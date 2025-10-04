@@ -40,6 +40,37 @@ let kiteIds sesh =
     | None -> []
     | Some sizes -> sizes |> List.map (fun sz -> deriveKiteId sesh.Date sz) |> List.choose id
 
+let private deriveBoardId date boardName boardType =
+    match boardType with
+    | Hydrofoil ->
+        match boardName with
+        | Some "Groove Skate"
+        | None when after "2022-08-10" date -> Some 31
+        | Some "Rocket v2 85L" -> Some 32
+        | Some "Rocket v2 60L"
+        | Some "Rocket 60L" -> Some 34
+        | Some "Flying Fish 40L" -> Some 33
+        | Some "LF Galaxy" -> Some 30
+        | None when between ("2017-06-24", "2022-08-09") date -> Some 30
+        | None when before "2017-06-23" date -> Some 17
+        | _ -> None
+    | Surfboard -> Some 43
+    | Twintip -> Some 44
+    | Skis -> Some 45
+    | Snowboard -> Some 46
+    | _ -> None
+
+let private isFoilSesh sesh =
+    match sesh with
+    | { BoardType = Some bt } -> List.contains Hydrofoil bt
+    | _ -> false
+
+let boardIds sesh =
+    match sesh.BoardType with
+    | None -> []
+    | Some boardTypes -> boardTypes |> List.map (deriveBoardId sesh.Date sesh.Board)
+    |> List.choose id
+
 let private deriveFoilId d name =
     match name with
     | None when before "2019-05-26" d -> Some 17
@@ -57,37 +88,11 @@ let private deriveFoilId d name =
     | Some "Veloce 890" -> Some 28
     | _ -> None
 
-let private isFoilSesh sesh =
-    match sesh with
-    | { BoardType = Some bt } -> List.contains Hydrofoil bt
-    | _ -> false
-
 let foilIds sesh =
     match isFoilSesh sesh, sesh.Foil with
     | true, None -> [ deriveFoilId sesh.Date None ]
     | true, Some foils -> foils |> List.map Some |> List.map (deriveFoilId sesh.Date)
     | _ -> []
-    |> List.choose id
-
-let private deriveBoardId d boardName =
-    match boardName with
-    | Some "Groove Skate"
-    | None when after "2022-08-10" d -> Some 31
-    | Some "Rocket v2 85L" -> Some 32
-    | Some "Rocket v2 60L"
-    | Some "Rocket 60L" -> Some 34
-    | Some "Flying Fish 40L" -> Some 33
-    | Some "LF Galaxy" -> Some 30
-    | None when between ("2017-06-24", "2022-08-09") d -> Some 30
-    | None when before "2017-06-23" d -> Some 17
-    | _ -> None
-
-// I only care about foilboards, throw away everything else
-let boardIds sesh =
-    match isFoilSesh sesh, sesh.Board with
-    | false, _ -> []
-    | true, None -> [ deriveBoardId sesh.Date None ]
-    | true, Some boards -> boards |> List.map Some |> List.map (deriveBoardId sesh.Date)
     |> List.choose id
 
 let private deriveWingId sport d size =
