@@ -37,7 +37,7 @@ kiteId d kiteSize =
     "7" | between ("2019-10-05", "2020-12-31") d -> Just 14
     "9" | after "2021-01-01" d -> Just 15
     "7" | after "2021-01-01" d -> Just 16
-    _ -> error $ "Missing gear ID for `" ++ kiteSize ++ "` on date: " ++ show d
+    _ -> Nothing -- There some other sizes that I borrowed that I don't care about
 
 kiteIds :: Normalized -> [Int]
 kiteIds row
