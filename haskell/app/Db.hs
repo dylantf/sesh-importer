@@ -64,11 +64,9 @@ seshGearVars :: Int -> [Int] -> [(Int, Int)]
 seshGearVars seshId gearIds = map (seshId,) gearIds
 
 isWindSesh :: Normalized -> Bool
-isWindSesh normalized = case sport normalized of
-  Kiteboarding -> True
-  WingFoiling -> True
-  Parawinging -> True
-  _ -> False
+isWindSesh normalized
+  | sport normalized `elem` [Kiteboarding, WingFoiling, Parawinging] = True
+  | otherwise = False
 
 insertSeshDetails :: Connection -> Int -> Normalized -> IO ()
 insertSeshDetails conn seshId sesh = do
