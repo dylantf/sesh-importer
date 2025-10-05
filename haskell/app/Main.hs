@@ -1,10 +1,10 @@
 module Main where
 
-import Db (insertData)
-import Parsers (parseFile)
+import           Db      (insertData)
+import           Parsers (parseFile)
 
 filePath :: Int -> String
-filePath year = "/home/dylan/Desktop/Sesh Import/" ++ show year ++ ".csv"
+filePath year = "/Users/dylan/Desktop/Sesh Import/" ++ show year ++ ".csv"
 
 main :: IO ()
 main = do
