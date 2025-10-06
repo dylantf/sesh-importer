@@ -4,7 +4,7 @@ import           Db      (insertData)
 import           Parsers (parseFile)
 
 filePath :: Int -> String
-filePath year = "/Users/dylan/Desktop/Sesh Import/" ++ show year ++ ".csv"
+filePath year = "/home/dylan/Desktop/Sesh Import/" ++ show year ++ ".csv"
 
 main :: IO ()
 main = do
