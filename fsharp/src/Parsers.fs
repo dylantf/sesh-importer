@@ -67,8 +67,8 @@ let private parseMany (s: string) =
     | Some [] -> None
     | Some xs -> Some xs
 
-let private normalizeSport =
-    function
+let private normalizeSport (sport: string) =
+    match sport.Trim() with
     | "Kiteboarding" -> Kiteboarding
     | "SUP" -> Sport.SUP
     | "Skiing" -> Skiing
@@ -177,7 +177,7 @@ let private parse2022 (row: CsvRow) : Normalized =
       WindAvg = row.GetColumn "Avg (kts)" |> parseInt
       WindGust = row.GetColumn "Gust (kts)" |> parseInt
       KiteSize = row.GetColumn "Kite" |> parseMany |> normalizeKiteSize
-      WingSize = None
+      WingSize = row.GetColumn "Wing" |> parseMany
       SeshType = row.GetColumn "Type" |> maybeString |> normalizeSeshType
       BoardType = row.GetColumn "Board Type" |> parseBoardTypes
       Foil = row.GetColumn "Foil" |> parseMany

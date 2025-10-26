@@ -94,7 +94,7 @@ parseMany str =
     Just xs -> Just xs
 
 normalizeSport :: String -> Sport
-normalizeSport s = case s of
+normalizeSport s = case trim s of
   "Kiteboarding" -> Kiteboarding
   "SUP" -> Sup
   "Skiing" -> Skiing
@@ -289,7 +289,7 @@ instance FromNamedRecord Normalized2022 where
         <*> r .: "Avg (kts)"
         <*> r .: "Gust (kts)"
         <*> (r .: "Kite" <&> parseKiteSize)
-        <*> pure Nothing
+        <*> (r .: "Wing" <&> parseMany)
         <*> (r .: "Type" <&> normalizeSeshType)
         <*> (r .: "Board Type" <&> parseBoardType)
         <*> (r .: "Foil" <&> parseMany)

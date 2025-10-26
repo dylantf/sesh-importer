@@ -68,7 +68,7 @@ fn parse_many(s: String) -> Option<Vec<String>> {
 
 fn parse_sport(s: &str) -> Sport {
     use Sport::*;
-    match s {
+    match s.trim() {
         "Kiteboarding" => Kiteboarding,
         "SUP" => Sup,
         "Skiing" => Skiing,
@@ -81,7 +81,7 @@ fn parse_sport(s: &str) -> Sport {
         "Surf" => Surfing,
         "Wing foiling" => WingFoiling,
         "Parawinging" => Parawinging,
-        _ => panic!("Unknown sport: {}", s),
+        _ => panic!("Unknown sport: `{}`", s),
     }
 }
 
@@ -385,6 +385,9 @@ struct Schema2022 {
     #[serde(rename(deserialize = "Kite"))]
     kite_size: Option<String>,
 
+    #[serde(rename(deserialize = "Wing"))]
+    wing_size: Option<String>,
+
     #[serde(rename(deserialize = "Type"))]
     sesh_type: Option<String>,
 
@@ -419,7 +422,7 @@ fn parse_2022(mut reader: Reader<File>) -> Vec<Normalized> {
                     .kite_size
                     .map(parse_many)
                     .and_then(normalize_kite_sizes),
-                wing_size: None,
+                wing_size: record.wing_size.and_then(parse_many),
                 sesh_type: record.sesh_type.as_deref().and_then(parse_sesh_type),
                 board_type: parse_board_types(record.board_type),
                 foil: record.foil.and_then(parse_many),
@@ -572,7 +575,7 @@ fn parse_2025(mut reader: Reader<File>) -> Vec<Normalized> {
 pub fn parse_file(year: &i32, path: &str) -> Vec<Normalized> {
     let reader = csv::ReaderBuilder::new().from_path(path).unwrap();
 
-    match year {
+    let data = match year {
         2012 => parse_2012(reader),
         2013 | 2015 => parse_2013(reader),
         2014 => parse_2014(reader),
@@ -581,5 +584,11 @@ pub fn parse_file(year: &i32, path: &str) -> Vec<Normalized> {
         2024 => parse_2024(reader),
         2025 => parse_2025(reader),
         _ => panic!("Parser not implemented for year {}", year),
-    }
+    };
+
+    // for row in data.as_slice() {
+    //     println!("{:?} - {:?}", row.date, row.wing_size);
+    // }
+
+    data
 }
