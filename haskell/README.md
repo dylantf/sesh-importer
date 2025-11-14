@@ -8,6 +8,8 @@
 - pg_config on path (`/usr/pgsql-17/bin`)
 - CSV files at correct location with correct names (see app/Main.hs)
 
+- `libpq-devel` and/or? `libpqxx-devel`
+
 ### Building:
 
 - `cabal build`
