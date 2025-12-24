@@ -306,6 +306,63 @@ fn parse_2014(mut reader: Reader<File>) -> Vec<Normalized> {
 }
 
 #[derive(Deserialize)]
+struct Schema2015 {
+    #[serde(rename(deserialize = "Date"), with = "parse_date")]
+    date: NaiveDate,
+
+    #[serde(rename(deserialize = "Sport"))]
+    sport: String,
+
+    #[serde(rename(deserialize = "Hours"))]
+    hours: f32,
+
+    #[serde(rename(deserialize = "Lull"))]
+    wind_avg: Option<i32>,
+
+    #[serde(rename(deserialize = "Gust"))]
+    wind_gust: Option<i32>,
+
+    #[serde(rename(deserialize = "Kite"))]
+    kite_size: Option<String>,
+
+    #[serde(rename(deserialize = "Type"))]
+    sesh_type: Option<String>,
+
+    #[serde(rename(deserialize = "Location"))]
+    location: Option<String>,
+
+    #[serde(rename(deserialize = "Comments"))]
+    comments: Option<String>,
+}
+
+fn parse_2015(mut reader: Reader<File>) -> Vec<Normalized> {
+    reader
+        .deserialize()
+        .map(|row| {
+            let record: Schema2015 = row.unwrap();
+            Normalized {
+                date: record.date,
+                sport: parse_sport(&record.sport),
+                hours: record.hours,
+                wind_avg: record.wind_avg,
+                wind_gust: record.wind_gust,
+                kite_size: record
+                    .kite_size
+                    .map(parse_many)
+                    .and_then(normalize_kite_sizes),
+                wing_size: None,
+                sesh_type: record.sesh_type.as_deref().and_then(parse_sesh_type),
+                board_type: None,
+                foil: None,
+                foil_board: None,
+                location: record.location,
+                comments: record.comments,
+            }
+        })
+        .collect::<Vec<Normalized>>()
+}
+
+#[derive(Deserialize)]
 struct Schema2016 {
     #[serde(rename(deserialize = "Date"), with = "parse_date")]
     date: NaiveDate,
@@ -575,20 +632,15 @@ fn parse_2025(mut reader: Reader<File>) -> Vec<Normalized> {
 pub fn parse_file(year: &i32, path: &str) -> Vec<Normalized> {
     let reader = csv::ReaderBuilder::new().from_path(path).unwrap();
 
-    let data = match year {
+    match year {
         2012 => parse_2012(reader),
-        2013 | 2015 => parse_2013(reader),
+        2013 => parse_2013(reader),
         2014 => parse_2014(reader),
+        2015 => parse_2015(reader),
         2016..=2021 => parse_2016(reader),
         2022..=2023 => parse_2022(reader),
         2024 => parse_2024(reader),
         2025 => parse_2025(reader),
         _ => panic!("Parser not implemented for year {}", year),
-    };
-
-    // for row in data.as_slice() {
-    //     println!("{:?} - {:?}", row.date, row.wing_size);
-    // }
-
-    data
+    }
 }

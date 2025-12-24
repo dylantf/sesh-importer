@@ -155,6 +155,21 @@ let private parse2014 (row: CsvRow) : Normalized =
       Location = row.GetColumn "Location" |> maybeString
       Comments = row.GetColumn "Comments" |> maybeString }
 
+let private parse2015 (row: CsvRow) : Normalized =
+    { Date = row.GetColumn "Date" |> DateTime.Parse
+      Sport = row.GetColumn "Sport" |> normalizeSport
+      Hours = row.GetColumn "Hours" |> double
+      WindAvg = row.GetColumn "Lull" |> parseInt
+      WindGust = row.GetColumn "Gust" |> parseInt
+      KiteSize = row.GetColumn "Kite" |> parseMany |> normalizeKiteSize
+      WingSize = None
+      SeshType = row.GetColumn "Type" |> maybeString |> normalizeSeshType
+      BoardType = None
+      Foil = None
+      Board = None
+      Location = row.GetColumn "Location" |> maybeString
+      Comments = row.GetColumn "Comments" |> maybeString }
+
 let private parse2016 (row: CsvRow) : Normalized =
     { Date = row.GetColumn "Date" |> DateTime.Parse
       Sport = row.GetColumn "Sport" |> normalizeSport
@@ -220,9 +235,9 @@ let parseFile (schema: int) (path: string) =
     |> Seq.map (
         match schema with
         | 2012 -> parse2012
-        | 2013
-        | 2015 -> parse2013
+        | 2013 -> parse2013
         | 2014 -> parse2014
+        | 2015 -> parse2015
         | 2016
         | 2017
         | 2018
