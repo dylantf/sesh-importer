@@ -1,11 +1,10 @@
+import birl.{type Time}
 import gleam/dict.{type Dict}
 import gleam/float
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
-import gleam/time/calendar
-import gleam/time/timestamp.{type Timestamp}
 
 type CsvRow =
   Dict(String, String)
@@ -42,7 +41,7 @@ pub type BoardType {
 
 pub type Normalized {
   Normalized(
-    date: Timestamp,
+    date: Time,
     sport: Sport,
     hours: Float,
     wind_avg: Option(Int),
@@ -84,18 +83,13 @@ fn parse_float(input: String) -> Float {
   }
 }
 
-// Converts M/D/YYYY string to Timestamp
-fn parse_date(input: String) -> Timestamp {
+// Converts google sheets M/D/YYYY string to Time type
+fn parse_date(input: String) -> Time {
   let assert [m, d, y] = string.split(input, "/")
-  let assert Ok(year) = int.parse(y)
-  let assert Ok(month_int) = int.parse(m)
-  let assert Ok(month) = calendar.month_from_int(month_int)
-  let assert Ok(day) = int.parse(d)
-  timestamp.from_calendar(
-    date: calendar.Date(year, month, day),
-    time: calendar.TimeOfDay(0, 0, 0, 0),
-    offset: calendar.utc_offset,
-  )
+  let m = string.pad_start(m, to: 2, with: "0")
+  let d = string.pad_start(d, to: 2, with: "0")
+  let assert Ok(time) = birl.parse(y <> "-" <> m <> "-" <> d)
+  time
 }
 
 fn parse_many(input: String) -> Option(List(String)) {
@@ -160,9 +154,6 @@ fn col(row: CsvRow, key: String) -> String {
   dict.get(row, key) |> option.from_result |> option.unwrap("")
 }
 
-// CSV parsers
-
-// Date,Sport,Hours,Lull (kn),Gust (kn),Kite Size,Type,Comments
 fn parse_2012(row: CsvRow) -> Normalized {
   Normalized(
     date: row |> col("Date") |> parse_date,
@@ -181,7 +172,6 @@ fn parse_2012(row: CsvRow) -> Normalized {
   )
 }
 
-// Date,Sport,Hours,Lull,Gust,Kite,Type,Comments
 fn parse_2013(row: CsvRow) -> Normalized {
   Normalized(
     date: row |> col("Date") |> parse_date,
@@ -200,7 +190,6 @@ fn parse_2013(row: CsvRow) -> Normalized {
   )
 }
 
-// Day,Sport,Hours,Lull (kn),Gust (kn),Kite Size,Type,Location,Comments,
 fn parse_2014(row: CsvRow) -> Normalized {
   Normalized(
     date: row |> col("Day") |> parse_date,
@@ -219,7 +208,6 @@ fn parse_2014(row: CsvRow) -> Normalized {
   )
 }
 
-// Date,Sport,Hours,Lull,Gust,Kite,Type,Location,Comments,
 fn parse_2015(row: CsvRow) -> Normalized {
   Normalized(
     date: row |> col("Date") |> parse_date,
@@ -238,7 +226,6 @@ fn parse_2015(row: CsvRow) -> Normalized {
   )
 }
 
-// Date,Sport,Hours,Lull (kts),Gust (kts),Kite,Type,Board,Location,Comments,
 fn parse_2016(row: CsvRow) -> Normalized {
   Normalized(
     date: row |> col("Date") |> parse_date,
@@ -257,7 +244,6 @@ fn parse_2016(row: CsvRow) -> Normalized {
   )
 }
 
-// ,Date,Sport,Hours,Avg (kts),Gust (kts),Kite,Wing,Type,Board Type,Foil,Foil Board,Location,Comments
 fn parse_2022(row: CsvRow) -> Normalized {
   Normalized(
     date: row |> col("Date") |> parse_date,
@@ -276,7 +262,6 @@ fn parse_2022(row: CsvRow) -> Normalized {
   )
 }
 
-// ,Date,Sport,Hours,Avg (kts),Gust (kts),Kite,Wing,Board Type,Foil,Foil Board,Location,Type,Comments,
 fn parse_2024(row: CsvRow) -> Normalized {
   Normalized(
     date: row |> col("Date") |> parse_date,
@@ -295,7 +280,6 @@ fn parse_2024(row: CsvRow) -> Normalized {
   )
 }
 
-// ,Date,Sport,Hours,Avg (kts),Gust (kts),Kite,Wing,Board Type,Foil,Board,Location,Type,Comments
 fn parse_2025(row: CsvRow) -> Normalized {
   Normalized(
     date: row |> col("Date") |> parse_date,

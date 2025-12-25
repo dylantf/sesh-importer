@@ -1,8 +1,6 @@
 import gleam/dict.{type Dict}
 import gleam/int
-import gleam/io
 import gleam/list
-import gleam/string
 import gsv
 import parsers
 import simplifile
@@ -29,6 +27,4 @@ pub fn main() {
       parsers.parse_file(year, rows)
     })
     |> list.flatten
-
-  list.each(normalized, fn(n) { io.println(string.inspect(n)) })
 }
