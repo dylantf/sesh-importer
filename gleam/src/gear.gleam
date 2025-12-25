@@ -3,8 +3,8 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/order
 import parsers.{
-  type BoardType, type Normalized, type Sport, Hydrofoil, Parawinging, Skis,
-  Snowboard, Surfboard, Twintip, WingFoiling,
+  type BoardType, type Normalized, type Sport, Hydrofoil, Other, Parawinging,
+  Skis, Snowboard, SupBoard, Surfboard, Twintip, WingFoiling,
 }
 
 type GearRule {
@@ -19,25 +19,20 @@ fn derive_gear_id(rules: List(GearRule), input: String) -> Option(Int) {
 }
 
 fn parse_date(d: String) -> Time {
-  let assert Ok(time) = birl.parse(d)
+  let assert Ok(time) = birl.from_naive(d <> " 00:00:00")
   time
 }
 
+// sesh_date is before the given date
 fn before(date_str: String, sesh_date: Time) -> Bool {
-  let ord =
-    date_str
-    |> parse_date
-    |> birl.compare(sesh_date)
-
-  ord == order.Lt
+  let rule_date = parse_date(date_str)
+  birl.compare(sesh_date, rule_date) == order.Lt
 }
 
+// sesh_date is on or after the given date
 fn after(date_str: String, sesh_date: Time) -> Bool {
-  let ord =
-    date_str
-    |> parse_date
-    |> birl.compare(sesh_date)
-
+  let rule_date = parse_date(date_str)
+  let ord = birl.compare(sesh_date, rule_date)
   ord == order.Gt || ord == order.Eq
 }
 
@@ -69,7 +64,7 @@ fn derive_kite_id(kite_size: String, sesh_date: Time) -> Option(Int) {
 fn derive_foil_id(sesh_date: Time, foil_name: Option(String)) -> Option(Int) {
   let name = option.unwrap(foil_name, "")
   [
-    GearRule("", before("2019-05-26", sesh_date), 17),
+    GearRule("", before("2019-05-27", sesh_date), 17),
     GearRule("", after("2019-05-27", sesh_date), 18),
     GearRule("Thruster", True, 18),
     GearRule("ART 999", True, 19),
@@ -114,51 +109,33 @@ pub fn foil_ids(sesh: Normalized) -> List(Int) {
   |> option.values
 }
 
-// Pattern matching in gleam kind of sucks ??? why can't we just have functions in guards
-
-type BoardRule {
-  BoardRule(board_type: BoardType, board_name: String, condition: Bool, id: Int)
-}
-
-fn derive_board_rules(
-  rules: List(BoardRule),
-  board_type: BoardType,
-  board_name: String,
-) -> Option(Int) {
-  rules
-  |> list.find(fn(rule) {
-    rule.board_type == board_type
-    && rule.board_name == board_name
-    && rule.condition
-  })
-  |> option.from_result
-  |> option.map(fn(rule) { rule.id })
-}
-
 fn derive_board_id(
   sesh_date: Time,
   board_type: BoardType,
   board_name: Option(String),
 ) -> Option(Int) {
-  let name = option.unwrap(board_name, "")
-  [
-    // Hydrofoil boards
-    BoardRule(Hydrofoil, "Groove Skate", after("2022-08-10", sesh_date), 31),
-    BoardRule(Hydrofoil, "", after("2022-08-10", sesh_date), 31),
-    BoardRule(Hydrofoil, "Rocket v2 85L", True, 32),
-    BoardRule(Hydrofoil, "Rocket v2 60L", True, 34),
-    BoardRule(Hydrofoil, "Rocket 60L", True, 34),
-    BoardRule(Hydrofoil, "Flying Fish 40L", True, 33),
-    BoardRule(Hydrofoil, "LF Galaxy", True, 30),
-    BoardRule(Hydrofoil, "", between("2017-06-24", "2022-08-09", sesh_date), 30),
-    BoardRule(Hydrofoil, "", before("2017-06-23", sesh_date), 17),
-    // Other board types
-    BoardRule(Surfboard, "", True, 43),
-    BoardRule(Twintip, "", True, 44),
-    BoardRule(Skis, "", True, 45),
-    BoardRule(Snowboard, "", True, 46),
-  ]
-  |> derive_board_rules(board_type, name)
+  case board_type {
+    Hydrofoil -> {
+      let name = option.unwrap(board_name, "")
+      [
+        GearRule("Groove Skate", after("2022-08-10", sesh_date), 31),
+        GearRule("", after("2022-08-10", sesh_date), 31),
+        GearRule("Rocket v2 85L", True, 32),
+        GearRule("Rocket v2 60L", True, 34),
+        GearRule("Rocket 60L", True, 34),
+        GearRule("Flying Fish 40L", True, 33),
+        GearRule("LF Galaxy", True, 30),
+        GearRule("", between("2017-06-24", "2022-08-09", sesh_date), 30),
+        GearRule("", before("2017-06-23", sesh_date), 17),
+      ]
+      |> derive_gear_id(name)
+    }
+    Surfboard -> Some(43)
+    Twintip -> Some(44)
+    Skis -> Some(45)
+    Snowboard -> Some(46)
+    SupBoard | Other -> None
+  }
 }
 
 pub fn board_ids(sesh: Normalized) -> List(Int) {
@@ -171,35 +148,25 @@ pub fn board_ids(sesh: Normalized) -> List(Int) {
   }
 }
 
-type WingRule {
-  WingRule(sport: Sport, size: String, condition: Bool, id: Int)
-}
-
-fn derive_wing_rules(
-  rules: List(WingRule),
-  sport: Sport,
-  size: String,
-) -> Option(Int) {
-  rules
-  |> list.find(fn(rule) {
-    rule.sport == sport && rule.size == size && rule.condition
-  })
-  |> option.from_result
-  |> option.map(fn(rule) { rule.id })
-}
-
 fn derive_wing_id(sport: Sport, sesh_date: Time, size: String) -> Option(Int) {
-  [
-    WingRule(WingFoiling, "6m", True, 35),
-    WingRule(WingFoiling, "5m", before("2024-01-01", sesh_date), 36),
-    WingRule(WingFoiling, "5m", after("2024-01-01", sesh_date), 39),
-    WingRule(WingFoiling, "4m", before("2024-01-01", sesh_date), 37),
-    WingRule(WingFoiling, "4m", after("2024-01-01", sesh_date), 40),
-    WingRule(WingFoiling, "5.5m", True, 38),
-    WingRule(WingFoiling, "3m", True, 41),
-    WingRule(Parawinging, "4m", True, 42),
+  let wings = [
+    GearRule("6m", True, 35),
+    GearRule("5m", before("2024-01-01", sesh_date), 36),
+    GearRule("5m", after("2024-01-01", sesh_date), 39),
+    GearRule("4m", before("2024-01-01", sesh_date), 37),
+    GearRule("4m", after("2024-01-01", sesh_date), 40),
+    GearRule("5.5m", True, 38),
+    GearRule("3m", True, 41),
   ]
-  |> derive_wing_rules(sport, size)
+
+  let parawings = [GearRule("4m", True, 42)]
+
+  case sport {
+    WingFoiling -> wings
+    Parawinging -> parawings
+    _ -> []
+  }
+  |> derive_gear_id(size)
 }
 
 fn is_wing_sport(sport: Sport) -> Bool {

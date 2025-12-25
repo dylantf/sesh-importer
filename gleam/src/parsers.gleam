@@ -88,7 +88,8 @@ fn parse_date(input: String) -> Time {
   let assert [m, d, y] = string.split(input, "/")
   let m = string.pad_start(m, to: 2, with: "0")
   let d = string.pad_start(d, to: 2, with: "0")
-  let assert Ok(time) = birl.parse(y <> "-" <> m <> "-" <> d)
+  let assert Ok(time) =
+    birl.from_naive(y <> "-" <> m <> "-" <> d <> " 00:00:00")
   time
 }
 
@@ -262,24 +263,6 @@ fn parse_2022(row: CsvRow) -> Normalized {
   )
 }
 
-fn parse_2024(row: CsvRow) -> Normalized {
-  Normalized(
-    date: row |> col("Date") |> parse_date,
-    sport: row |> col("Sport") |> parse_sport,
-    hours: row |> col("Hours") |> parse_float,
-    wind_avg: row |> col("Avg (kts)") |> parse_int,
-    wind_gust: row |> col("Gust (kts)") |> parse_int,
-    kite_size: row |> col("Kite") |> parse_many |> normalize_kite_sizes,
-    wing_size: row |> col("Wing") |> parse_many,
-    sesh_type: row |> col("Type") |> parse_sesh_type,
-    board_type: row |> col("Board Type") |> maybe_string |> parse_board_types,
-    foil: row |> col("Foil") |> parse_many,
-    foil_board: row |> col("Foil Board") |> maybe_string,
-    location: row |> col("Location") |> maybe_string,
-    comments: row |> col("Comments") |> maybe_string,
-  )
-}
-
 fn parse_2025(row: CsvRow) -> Normalized {
   Normalized(
     date: row |> col("Date") |> parse_date,
@@ -305,8 +288,7 @@ fn parse_row(row: CsvRow, year: Int) -> Normalized {
     2014 -> parse_2014(row)
     2015 -> parse_2015(row)
     2016 | 2017 | 2018 | 2019 | 2020 | 2021 -> parse_2016(row)
-    2022 | 2023 -> parse_2022(row)
-    2024 -> parse_2024(row)
+    2022 | 2023 | 2024 -> parse_2022(row)
     2025 -> parse_2025(row)
     _ -> panic as { "Not implemented: " <> int.to_string(year) }
   }
