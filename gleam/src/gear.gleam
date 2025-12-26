@@ -23,10 +23,11 @@ fn parse_date(d: String) -> Time {
   time
 }
 
-// sesh_date is before the given date
+// sesh_date is on or before the given date
 fn before(date_str: String, sesh_date: Time) -> Bool {
   let rule_date = parse_date(date_str)
-  birl.compare(sesh_date, rule_date) == order.Lt
+  let ord = birl.compare(sesh_date, rule_date)
+  ord == order.Lt || ord == order.Eq
 }
 
 // sesh_date is on or after the given date
