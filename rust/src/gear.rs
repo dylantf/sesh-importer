@@ -6,7 +6,7 @@ fn parse_date(s: &str) -> NaiveDate {
 }
 
 fn before(date_str: &str, sesh_date: NaiveDate) -> bool {
-    sesh_date < parse_date(date_str)
+    sesh_date <= parse_date(date_str)
 }
 
 fn after(date_str: &str, sesh_date: NaiveDate) -> bool {
