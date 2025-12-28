@@ -1,12 +1,33 @@
 module Db (insertData) where
 
-import Control.Monad (forM_, when)
+import Control.Monad (unless)
 import Database.PostgreSQL.Simple
 import Gear
 import Parsers (Normalized (..), SeshType (..), Sport (..))
 
 userId :: Int
 userId = 1
+
+data SeshesRow = SeshesRow
+  { seshesUserId :: Int,
+    seshesDate :: String,
+    seshesSport :: String,
+    seshesDurationSeconds :: Int,
+    seshesLocationName :: Maybe String,
+    seshesComments :: String
+  }
+
+data WindSeshDetailsRow = WindSeshDetailsRow
+  { wsdWindAvg :: Int,
+    wsdWindGust :: Int,
+    wsdSeshType :: String
+  }
+
+data Prepped = Prepped
+  { preppedSesh :: SeshesRow,
+    preppedWindSeshDetails :: Maybe WindSeshDetailsRow,
+    preppedGearIds :: [Int]
+  }
 
 sportToString :: Sport -> String
 sportToString sport = case sport of
@@ -28,71 +49,84 @@ seshTypeToString seshType = case seshType of
   Downwinder -> "downwinder"
   Roundwinder -> "roundwinder"
 
+isWindSesh :: Normalized -> Bool
+isWindSesh normalized = sport normalized `elem` [Kiteboarding, WingFoiling, Parawinging]
+
+prepSesh :: Normalized -> SeshesRow
+prepSesh normalized =
+  SeshesRow
+    { seshesUserId = userId,
+      seshesDate = show $ date normalized,
+      seshesSport = sportToString $ sport normalized,
+      seshesLocationName = location normalized,
+      seshesDurationSeconds = round $ hours normalized * 3600 :: Int,
+      seshesComments = comments normalized
+    }
+
+prepWindSeshDetails :: Normalized -> Maybe WindSeshDetailsRow
+prepWindSeshDetails normalized | not (isWindSesh normalized) = Nothing
+prepWindSeshDetails Normalized {windAvg = Just avg, windGust = Just gust, seshType = Just st} =
+  Just
+    WindSeshDetailsRow
+      { wsdWindAvg = avg,
+        wsdWindGust = gust,
+        wsdSeshType = seshTypeToString st
+      }
+prepWindSeshDetails _ = Nothing
+
+prepGearIds :: Normalized -> [Int]
+prepGearIds normalized = concatMap ($ normalized) [kiteIds, hydrofoilIds, boardIds, wingIds]
+
+prepNormalizedData :: Normalized -> Prepped
+prepNormalizedData normalized =
+  Prepped
+    { preppedSesh = prepSesh normalized,
+      preppedWindSeshDetails = prepWindSeshDetails normalized,
+      preppedGearIds = prepGearIds normalized
+    }
+
 seshSql :: Query
 seshSql =
   "insert into seshes (user_id, date, sport, duration_seconds, location_name, comments) values (?, ?, ?, ?, ?, ?) returning id"
 
-seshVariables :: Normalized -> (Int, String, String, Int, Maybe String, String)
-seshVariables sesh =
-  ( userId,
-    show $ date sesh,
-    sportToString (sport sesh),
-    round (hours sesh * 3600) :: Int,
-    location sesh,
-    comments sesh
-  )
+seshVariables :: Prepped -> (Int, String, String, Int, Maybe String, String)
+seshVariables prepped =
+  (seshesUserId sesh, seshesDate sesh, seshesSport sesh, seshesDurationSeconds sesh, seshesLocationName sesh, seshesComments sesh)
+  where
+    sesh = preppedSesh prepped
+
+insertSeshes :: Connection -> [Prepped] -> IO [(Int, Prepped)]
+insertSeshes conn prepped = do
+  xs :: [Only Int] <- returning conn seshSql (map seshVariables prepped)
+  let ids = zip [i | Only i <- xs] prepped
+  putStrLn $ "Inserted " ++ show (length xs) ++ " seshes."
+  pure ids
 
 windSeshDetailsSql :: Query
 windSeshDetailsSql =
-  "insert into wind_sesh_details (sesh_id, wind_avg, wind_gust, sesh_type) values (?, ?, ?, ?) returning id"
+  "insert into wind_sesh_details (sesh_id, wind_avg, wind_gust, sesh_type) values (?, ?, ?, ?)"
 
-windSeshDetailsVars :: Normalized -> Int -> (Int, Maybe Int, Maybe Int, Maybe String)
-windSeshDetailsVars sesh seshId =
-  ( seshId,
-    windAvg sesh,
-    windGust sesh,
-    seshType sesh >>= Just . seshTypeToString
-  )
+insertWindSeshDetails :: Connection -> [(Int, Prepped)] -> IO ()
+insertWindSeshDetails conn records = do
+  let toInsert = [(seshId, wsdWindAvg wsd, wsdWindGust wsd, wsdSeshType wsd) | (seshId, p) <- records, Just wsd <- [preppedWindSeshDetails p]]
+  unless (null toInsert) $ do
+    _ <- executeMany conn windSeshDetailsSql toInsert
+    putStrLn $ "Inserted " ++ show (length toInsert) ++ " wind sesh details"
 
 seshGearSql :: Query
-seshGearSql = "insert into sesh_gear (sesh_id, gear_id) values (?, ?);"
+seshGearSql = "insert into sesh_gear (sesh_id, gear_id) values (?, ?)"
 
-seshGearIds :: Normalized -> [Int]
-seshGearIds sesh = concatMap ($ sesh) [kiteIds, hydrofoilIds, boardIds, wingIds]
-
-seshGearVars :: Int -> [Int] -> [(Int, Int)]
-seshGearVars seshId gearIds = map (seshId,) gearIds
-
-isWindSesh :: Normalized -> Bool
-isWindSesh normalized
-  | sport normalized `elem` [Kiteboarding, WingFoiling, Parawinging] = True
-  | otherwise = False
-
-insertSeshDetails :: Connection -> Int -> Normalized -> IO ()
-insertSeshDetails conn seshId sesh = do
-  when (isWindSesh sesh) $ do
-    [Only kbSeshId] <- query conn windSeshDetailsSql $ windSeshDetailsVars sesh seshId :: IO [Only Int]
-    putStrLn $ "-- Inserted wind sesh details with ID: " ++ show kbSeshId
-
-insertSeshGear :: Connection -> Int -> Normalized -> IO ()
-insertSeshGear conn seshId sesh =
-  case seshGearIds sesh of
-    [] -> pure ()
-    gearIds -> do
-      let vars = seshGearVars seshId gearIds
-      putStrLn $ "-- Insterting gear: " ++ show vars
-      _ <- executeMany conn seshGearSql vars
-      pure ()
-
-insertSesh :: Connection -> Normalized -> IO Int
-insertSesh conn sesh = do
-  [Only seshId] <- query conn seshSql (seshVariables sesh)
-  putStrLn $ "Inserted sesh with id: " ++ show seshId
-  _ <- insertSeshDetails conn seshId sesh
-  _ <- insertSeshGear conn seshId sesh
-  pure seshId
+insertSeshGear :: Connection -> [(Int, Prepped)] -> IO ()
+insertSeshGear conn records = do
+  let toInsert = [(seshId, gearId) | (seshId, p) <- records, gearId <- preppedGearIds p]
+  unless (null toInsert) $ do
+    _ <- executeMany conn seshGearSql toInsert
+    putStrLn $ "Inserted " ++ show (length toInsert) ++ " sesh gear records"
 
 insertData :: [Normalized] -> IO ()
 insertData rows = do
   conn <- connectPostgreSQL "host=localhost port=5432 dbname=seshtracker_dev user=dylan password=dylan"
-  forM_ rows $ insertSesh conn
+  let prepped = map prepNormalizedData rows
+  seshesWithIds <- insertSeshes conn prepped
+  insertWindSeshDetails conn seshesWithIds
+  insertSeshGear conn seshesWithIds
