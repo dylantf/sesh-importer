@@ -13,6 +13,5 @@ let parseCsvData () =
 
 [<EntryPoint>]
 let main _ =
-    let normalized = parseCsvData ()
-    List.iter Db.insertSeshData normalized
+    parseCsvData () |> Db.insertAll
     0

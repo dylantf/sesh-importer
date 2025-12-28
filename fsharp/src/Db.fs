@@ -149,9 +149,12 @@ let private insertGear (conn: IDbConnection) (n: Normalized) (seshId: int) =
         |> Async.RunSynchronously
         |> ignore
 
-let insertSeshData n =
-    let conn = connect ()
+let insertSeshData (conn: IDbConnection) n =
     let sesh = insertSesh conn n
     insertDetails conn n sesh.id
     insertGear conn n sesh.id
+
+let insertAll (rows: Normalized list) =
+    let conn = connect ()
+    List.iter (insertSeshData conn) rows
     conn.Close()
