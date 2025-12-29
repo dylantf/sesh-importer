@@ -1,0 +1,19 @@
+{
+  "name": "typescript",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/papaparse": "^5.5.2",
+    "drizzle-kit": "^0.31.8"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.1",
+    "papaparse": "^5.5.3",
+    "postgres": "^3.4.7"
+  }
+}
