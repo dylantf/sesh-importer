@@ -1,4 +1,4 @@
-cabal-version: 3.8
+cabal-version: 3.12
 name: importer
 version: 0.1.0.0
 -- synopsis:
@@ -27,7 +27,7 @@ executable importer
     TypeApplications
 
   build-depends:
-    base ^>=4.18.3.0,
+    base ^>=4.20.0.0,
     bytestring,
     cassava,
     postgresql-simple,
