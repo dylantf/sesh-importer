@@ -13,8 +13,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dapper.FSharp" Version="4.9.0" />
     <PackageReference Include="FSharp.Data" Version="6.6.0" />
     <PackageReference Include="npgsql" Version="9.0.3" />
+    <PackageReference Include="Npgsql.FSharp" Version="8.0.0" />
   </ItemGroup>
 </Project>

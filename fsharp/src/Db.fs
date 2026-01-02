@@ -1,52 +1,30 @@
 module Db
 
 open System
-open Dapper.FSharp.PostgreSQL
+open Npgsql.FSharp
 
 open Parsers
 open Gear
 
-// Register option type mapping for null values
-OptionTypes.register ()
+type private SeshRow =
+    { UserId: int
+      Date: DateTime
+      Sport: string
+      DurationSeconds: int
+      LocationName: string option
+      Comments: string option }
 
-let private connect () =
-    let conn =
-        new Npgsql.NpgsqlConnection "Host=localhost;Port=5432;Database=seshtracker_dev;User Id=dylan;Password=dylan;"
-
-    conn.Open()
-    conn
-
-[<CLIMutable>]
-type private Sesh =
-    { id: int
-      user_id: int
-      date: DateTime
-      sport: string
-      duration_seconds: int
-      location_name: string option
-      comments: string option
-      created_at: DateTime
-      updated_at: DateTime }
-
-[<CLIMutable>]
-type private WindSportSesh =
-    { id: int
-      sesh_id: int
-      wind_avg: int
-      wind_gust: int
-      sesh_type: string }
-
-[<CLIMutable>]
-type private SeshGear = { id: int; sesh_id: int; gear_id: int }
+type private WindSportDetailsRow =
+    { WindAvg: int
+      WindGust: int
+      SeshType: string }
 
 type private MappedSesh =
-    { Sesh: Sesh
-      WindDetails: WindSportSesh option
+    { Sesh: SeshRow
+      WindSportDetails: WindSportDetailsRow option
       GearIds: int list }
 
-let private seshTable = table'<Sesh> "seshes"
-let private windSeshDetailsTable = table'<WindSportSesh> "wind_sesh_details"
-let private seshGearTable = table'<SeshGear> "sesh_gear"
+type private InsertedMappedSesh = (int * MappedSesh)
 
 let private stringifySport =
     function
@@ -76,16 +54,15 @@ let private seshGearIds (n: Normalized) =
 
 // Map Normalized -> MappedSesh for batch insert
 let private mapNormalized (n: Normalized) : MappedSesh =
-    let sesh: Sesh =
-        { id = -1
-          user_id = 1 // Dylan
-          date = n.Date
-          sport = stringifySport n.Sport
-          duration_seconds = n.Hours * 60.0 * 60.0 |> Math.Round |> int
-          location_name = n.Location
-          comments = n.Comments
-          created_at = DateTime.Now
-          updated_at = DateTime.Now }
+    let duration = n.Hours * 60.0 * 60.0 |> Math.Round |> int
+
+    let sesh =
+        { UserId = 1 // Dylan
+          Date = n.Date
+          Sport = stringifySport n.Sport
+          DurationSeconds = duration
+          LocationName = n.Location
+          Comments = n.Comments }
 
     let windDetails =
         if isWindSport n.Sport then
@@ -94,91 +71,116 @@ let private mapNormalized (n: Normalized) : MappedSesh =
                 WindGust = Some windGust
                 SeshType = Some seshType } ->
                 Some
-                    { id = -1
-                      sesh_id = -1 // filled in later
-                      wind_avg = windAvg
-                      wind_gust = windGust
-                      sesh_type = stringifySeshType seshType }
+                    { WindAvg = windAvg
+                      WindGust = windGust
+                      SeshType = stringifySeshType seshType }
             | _ -> failwith $"Wind sport sesh missing data: {n}"
         else
             None
 
     { Sesh = sesh
-      WindDetails = windDetails
+      WindSportDetails = windDetails
       GearIds = seshGearIds n }
 
-let private insertSeshes (conn: Npgsql.NpgsqlConnection) (mapped: MappedSesh list) : MappedSesh list =
-    let seshRecords = mapped |> List.map (fun m -> m.Sesh)
+let private insertSeshes (conn: Npgsql.NpgsqlConnection) (mapped: MappedSesh list) : InsertedMappedSesh list =
+    let seshes = List.map _.Sesh mapped
 
-    let insertedIds =
-        insert {
-            for s in seshTable do
-                values seshRecords
-                excludeColumn s.id
-                excludeColumn s.created_at
-                excludeColumn s.updated_at
-        }
-        |> conn.InsertOutputAsync<Sesh, {| id: int |}>
-        |> Async.AwaitTask
-        |> Async.RunSynchronously
-        |> Seq.toList
+    let insertSeshesSql =
+        """
+        insert into seshes (user_id, date, sport, duration_seconds, location_name, comments)
+        select * from unnest(@userIds::int[], @dates::date[], @sports::text[], @durations::int[], @locations::text[], @comments::text[])
+        returning id
+        """
 
-    printfn $"Inserted {List.length insertedIds} seshes"
+    let ids =
+        conn
+        |> Sql.existingConnection
+        |> Sql.query insertSeshesSql
+        |> Sql.parameters
+            [ "userIds", Array.replicate seshes.Length 1 |> Sql.intArray
+              "dates",
+              seshes
+              |> List.map (_.Date.ToString("yyyy-MM-dd"))
+              |> List.toArray
+              |> Sql.stringArray
+              "sports", seshes |> List.map _.Sport |> List.toArray |> Sql.stringArray
+              "durations", seshes |> List.map _.DurationSeconds |> List.toArray |> Sql.intArray
+              "locations",
+              seshes
+              |> List.map (_.LocationName >> Option.toObj)
+              |> List.toArray
+              |> Sql.stringArray
+              "comments",
+              seshes
+              |> List.map (_.Comments >> Option.toObj)
+              |> List.toArray
+              |> Sql.stringArray ]
+        |> Sql.execute (fun read -> read.int "id")
 
-    List.map2
-        (fun m (inserted: {| id: int |}) ->
-            { m with
-                Sesh = { m.Sesh with id = inserted.id } })
-        mapped
-        insertedIds
+    if ids.Length <> seshes.Length then
+        failwith $"Inserted a different number of seshes than expected! {ids.Length} vs {seshes.Length}"
+    else
+        printfn $"Inserted {ids.Length} seshes"
 
-let private insertWindDetails (conn: Npgsql.NpgsqlConnection) (mapped: MappedSesh list) =
+    List.map2 (fun id sesh -> id, sesh) ids mapped
+
+let private insertWindDetails (conn: Npgsql.NpgsqlConnection) (mapped: InsertedMappedSesh list) =
     let windRecords =
         mapped
-        |> List.choose (fun m -> m.WindDetails |> Option.map (fun wd -> { wd with sesh_id = m.Sesh.id }))
+        |> List.choose (fun (seshId, m) -> m.WindSportDetails |> Option.map (fun wd -> seshId, wd))
 
     if not (List.isEmpty windRecords) then
-        insert {
-            for w in windSeshDetailsTable do
-                values windRecords
-                excludeColumn w.id
-        }
-        |> conn.InsertAsync
-        |> Async.AwaitTask
-        |> Async.RunSynchronously
-        |> ignore
+        let sql =
+            """
+            insert into wind_sesh_details (sesh_id, wind_avg, wind_gust, sesh_type)
+            select * from unnest(@seshIds::int[], @windAvgs::int[], @windGusts::int[], @seshTypes::text[])
+            """
 
-        printfn $"Inserted {List.length windRecords} wind details"
+        let rowsAffected =
+            conn
+            |> Sql.existingConnection
+            |> Sql.query sql
+            |> Sql.parameters
+                [ "seshIds", windRecords |> List.map fst |> List.toArray |> Sql.intArray
+                  "windAvgs", windRecords |> List.map (snd >> _.WindAvg) |> List.toArray |> Sql.intArray
+                  "windGusts", windRecords |> List.map (snd >> _.WindGust) |> List.toArray |> Sql.intArray
+                  "seshTypes", windRecords |> List.map (snd >> _.SeshType) |> List.toArray |> Sql.stringArray ]
+            |> Sql.executeNonQuery
+
+        printfn $"Inserted {rowsAffected} wind details"
 
     mapped
 
-let private insertGear (conn: Npgsql.NpgsqlConnection) (mapped: MappedSesh list) =
-    let gearRecords: SeshGear list =
+let private insertGear (conn: Npgsql.NpgsqlConnection) (mapped: InsertedMappedSesh list) =
+    let gearRecords =
         mapped
-        |> List.collect (fun m ->
-            m.GearIds
-            |> List.map (fun gearId ->
-                { id = -1
-                  sesh_id = m.Sesh.id
-                  gear_id = gearId }))
+        |> List.collect (fun (seshId, m) -> m.GearIds |> List.map (fun gearId -> seshId, gearId))
 
     if not (List.isEmpty gearRecords) then
-        insert {
-            for sg in seshGearTable do
-                values gearRecords
-                excludeColumn sg.id
-        }
-        |> conn.InsertAsync
-        |> Async.AwaitTask
-        |> Async.RunSynchronously
-        |> ignore
+        let sql =
+            """
+            insert into sesh_gear (sesh_id, gear_id)
+            select * from unnest(@seshIds::int[], @gearIds::int[])
+            """
 
-        printfn $"Inserted {List.length gearRecords} gear records"
+        let rowsAffected =
+            conn
+            |> Sql.existingConnection
+            |> Sql.query sql
+            |> Sql.parameters
+                [ "seshIds", gearRecords |> List.map fst |> List.toArray |> Sql.intArray
+                  "gearIds", gearRecords |> List.map snd |> List.toArray |> Sql.intArray ]
+            |> Sql.executeNonQuery
+
+        printfn $"Inserted {rowsAffected} gear records"
 
     mapped
 
 let insertAll (rows: Normalized list) =
-    use conn = connect ()
+    use conn =
+        new Npgsql.NpgsqlConnection "Host=localhost;Port=5432;Database=seshtracker_dev;User Id=dylan;Password=dylan;"
+
+    conn.Open()
 
     rows
     |> List.map mapNormalized
@@ -186,3 +188,5 @@ let insertAll (rows: Normalized list) =
     |> insertWindDetails conn
     |> insertGear conn
     |> ignore
+
+    conn.Close()
