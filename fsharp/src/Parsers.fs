@@ -247,7 +247,8 @@ let parseFile (schema: int) (path: string) =
         | 2022
         | 2023 -> parse2022
         | 2024 -> parse2024
-        | 2025 -> parse2025
+        | 2025
+        | 2026 -> parse2025
         | other -> failwith $"Schema for `{other}` not defined yet!"
     )
     |> Seq.toList

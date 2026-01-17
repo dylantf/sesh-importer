@@ -10,7 +10,7 @@ fn import_path(year: &i32) -> String {
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
-    let years = (2012..=2025).collect::<Vec<i32>>();
+    let years = (2012..=2026).collect::<Vec<i32>>();
 
     let normalized = years
         .iter()

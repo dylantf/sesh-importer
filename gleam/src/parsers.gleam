@@ -289,7 +289,7 @@ fn parse_row(row: CsvRow, year: Int) -> Normalized {
     2015 -> parse_2015(row)
     2016 | 2017 | 2018 | 2019 | 2020 | 2021 -> parse_2016(row)
     2022 | 2023 | 2024 -> parse_2022(row)
-    2025 -> parse_2025(row)
+    2025 | 2026 -> parse_2025(row)
     _ -> panic as { "Not implemented: " <> int.to_string(year) }
   }
 }

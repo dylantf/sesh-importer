@@ -7,7 +7,7 @@ let parseCsvData () =
         let dir = "/home/dylan/Desktop/Sesh Import"
         dir + $"/{year}.csv"
 
-    seq { 2012..2025 }
+    seq { 2012..2026 }
     |> Seq.map (fun year -> parseFile year (fullPath year))
     |> List.concat
 

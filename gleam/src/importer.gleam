@@ -18,7 +18,7 @@ fn read_file(year: Int) -> List(Dict(String, String)) {
 }
 
 pub fn main() {
-  let years = list.range(2012, 2025)
+  let years = list.range(2012, 2026)
 
   let normalized =
     years

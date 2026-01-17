@@ -239,7 +239,7 @@ let parse_file ~schema rows =
     | 2022 -> parse_2022
     | 2023 -> parse_2024
     | 2024 -> parse_2024
-    | 2025 -> parse_2025
+    | 2025 | 2026 -> parse_2025
     | other -> failwith (Printf.sprintf "Schema for `%d` not defined yet!" other)
   in
   List.map parser rows

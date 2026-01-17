@@ -369,6 +369,7 @@ parser year = case year of
   2023 -> parse2022
   2024 -> parse2024
   2025 -> parse2025
+  2026 -> parse2025
   _ -> error $ "Parser not implemented for year: `" ++ show year ++ "`!"
 
 parseFile :: String -> Int -> IO [Normalized]

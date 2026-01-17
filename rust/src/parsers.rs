@@ -640,7 +640,7 @@ pub fn parse_file(year: &i32, path: &str) -> Vec<Normalized> {
         2016..=2021 => parse_2016(reader),
         2022..=2023 => parse_2022(reader),
         2024 => parse_2024(reader),
-        2025 => parse_2025(reader),
+        2025..=2026 => parse_2025(reader),
         _ => panic!("Parser not implemented for year {}", year),
     }
 }

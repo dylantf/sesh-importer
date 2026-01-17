@@ -1,9 +1,14 @@
 import type { BoardType, Normalized, Sport } from "./parsers";
 
-const before = (dateStr: string, d: Date) => d <= new Date(dateStr);
-const after = (dateStr: string, d: Date) => d >= new Date(dateStr);
+const parseDate = (dateStr: string): Date => {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
+
+const before = (dateStr: string, d: Date) => d <= parseDate(dateStr);
+const after = (dateStr: string, d: Date) => d >= parseDate(dateStr);
 const between = (start: string, end: string, d: Date) =>
-  d >= new Date(start) && d <= new Date(end);
+  d >= parseDate(start) && d <= parseDate(end);
 
 function kiteId(d: Date, kiteSize: string): number | null {
   switch (kiteSize) {
@@ -70,8 +75,10 @@ function hydrofoilId(d: Date, foilName: string | null): number | null {
     case "Eagle 990":
       return 25;
     case "Ypra-S 785":
+    case "Ypra S 785":
       return 26;
     case "Ypra-S 1000":
+    case "Ypra S 1000":
       return 27;
     case "Veloce 890":
       return 28;
@@ -100,7 +107,7 @@ export function foilIds(row: Normalized): number[] {
 function boardId(
   date: Date,
   boardName: string | null,
-  bt: BoardType
+  bt: BoardType,
 ): number | null {
   if (bt === "hydrofoil") {
     switch (boardName) {

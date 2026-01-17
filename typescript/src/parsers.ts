@@ -302,6 +302,7 @@ const getParser = (year: number): ((row: CsvRow) => Normalized) => {
     case 2024:
       return parse2024;
     case 2025:
+    case 2026:
       return parse2025;
     default:
       throw new Error(`Parser not implemented for year: ${year}`);
@@ -310,10 +311,13 @@ const getParser = (year: number): ((row: CsvRow) => Normalized) => {
 
 export const parseFile = async (
   path: string,
-  year: number
+  year: number,
 ): Promise<Normalized[]> => {
   const content = await Bun.file(path).text();
-  const { data } = Papa.parse<CsvRow>(content, { header: true });
+  const { data } = Papa.parse<CsvRow>(content, {
+    header: true,
+    skipEmptyLines: true,
+  });
   const parser = getParser(year);
-  return data.filter((row) => row["Date"]).map(parser);
+  return data.map(parser);
 };
