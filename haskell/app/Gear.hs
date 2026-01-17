@@ -58,7 +58,9 @@ hydrofoilId _ (Just foilName) = case foilName of
   "Eagle 890" -> Just 24
   "Eagle 990" -> Just 25
   "Ypra-S 785" -> Just 26
+  "Ypra S 785" -> Just 26
   "Ypra-S 1000" -> Just 27
+  "Ypra S 1000" -> Just 27
   "Veloce 890" -> Just 28
   _ -> Nothing
 
