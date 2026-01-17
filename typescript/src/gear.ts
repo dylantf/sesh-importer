@@ -122,10 +122,12 @@ function boardId(
         return 33;
       case "LF Galaxy":
         return 30;
-      default:
+      case null:
         if (between("2017-06-24", "2022-08-09", date)) return 30;
         if (before("2017-06-23", date)) return 17;
         if (after("2022-08-10", date)) return 31;
+        return null;
+      default:
         return null;
     }
   }
