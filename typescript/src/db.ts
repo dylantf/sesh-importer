@@ -50,7 +50,12 @@ interface Prepped {
   gearIds: number[];
 }
 
-const formatDate = (d: Date): string => d.toISOString().split("T")[0];
+const formatDate = (d: Date): string => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 const prepWindDetails = (n: Normalized): WindDetails | null => {
   if (!isWindSport(n.sport)) return null;

@@ -144,7 +144,7 @@ const maybeInt = (val: string | undefined): number | null => {
   return isNaN(n) ? null : n;
 };
 
-const parseFloat_ = (val: string | undefined): number => {
+const parseFloatEx = (val: string | undefined): number => {
   if (!val) throw new Error("Float value is required");
   return parseFloat(val);
 };
@@ -154,7 +154,7 @@ type CsvRow = Record<string, string>;
 const parse2012 = (row: CsvRow): Normalized => ({
   date: parseDate(row["Date"]),
   sport: normalizeSport(row["Sport"]),
-  hours: parseFloat_(row["Hours"]),
+  hours: parseFloatEx(row["Hours"]),
   windAvg: maybeInt(row["Lull (kn)"]),
   windGust: maybeInt(row["Gust (kn)"]),
   kiteSize: parseKiteSize(row["Kite Size"]),
@@ -170,7 +170,7 @@ const parse2012 = (row: CsvRow): Normalized => ({
 const parse2013 = (row: CsvRow): Normalized => ({
   date: parseDate(row["Date"]),
   sport: normalizeSport(row["Sport"]),
-  hours: parseFloat_(row["Hours"]),
+  hours: parseFloatEx(row["Hours"]),
   windAvg: maybeInt(row["Lull"]),
   windGust: maybeInt(row["Gust"]),
   kiteSize: parseKiteSize(row["Kite"]),
@@ -186,7 +186,7 @@ const parse2013 = (row: CsvRow): Normalized => ({
 const parse2014 = (row: CsvRow): Normalized => ({
   date: parseDate(row["Day"]),
   sport: normalizeSport(row["Sport"]),
-  hours: parseFloat_(row["Hours"]),
+  hours: parseFloatEx(row["Hours"]),
   windAvg: maybeInt(row["Lull (kn)"]),
   windGust: maybeInt(row["Gust (kn)"]),
   kiteSize: parseKiteSize(row["Kite Size"]),
@@ -202,7 +202,7 @@ const parse2014 = (row: CsvRow): Normalized => ({
 const parse2015 = (row: CsvRow): Normalized => ({
   date: parseDate(row["Date"]),
   sport: normalizeSport(row["Sport"]),
-  hours: parseFloat_(row["Hours"]),
+  hours: parseFloatEx(row["Hours"]),
   windAvg: maybeInt(row["Lull"]),
   windGust: maybeInt(row["Gust"]),
   kiteSize: parseKiteSize(row["Kite"]),
@@ -218,7 +218,7 @@ const parse2015 = (row: CsvRow): Normalized => ({
 const parse2016 = (row: CsvRow): Normalized => ({
   date: parseDate(row["Date"]),
   sport: normalizeSport(row["Sport"]),
-  hours: parseFloat_(row["Hours"]),
+  hours: parseFloatEx(row["Hours"]),
   windAvg: maybeInt(row["Lull (kts)"]),
   windGust: maybeInt(row["Gust (kts)"]),
   kiteSize: parseKiteSize(row["Kite"]),
@@ -234,7 +234,7 @@ const parse2016 = (row: CsvRow): Normalized => ({
 const parse2022 = (row: CsvRow): Normalized => ({
   date: parseDate(row["Date"]),
   sport: normalizeSport(row["Sport"]),
-  hours: parseFloat_(row["Hours"]),
+  hours: parseFloatEx(row["Hours"]),
   windAvg: maybeInt(row["Avg (kts)"]),
   windGust: maybeInt(row["Gust (kts)"]),
   kiteSize: parseKiteSize(row["Kite"]),
@@ -250,7 +250,7 @@ const parse2022 = (row: CsvRow): Normalized => ({
 const parse2024 = (row: CsvRow): Normalized => ({
   date: parseDate(row["Date"]),
   sport: normalizeSport(row["Sport"]),
-  hours: parseFloat_(row["Hours"]),
+  hours: parseFloatEx(row["Hours"]),
   windAvg: maybeInt(row["Avg (kts)"]),
   windGust: maybeInt(row["Gust (kts)"]),
   kiteSize: parseKiteSize(row["Kite"]),
@@ -266,7 +266,7 @@ const parse2024 = (row: CsvRow): Normalized => ({
 const parse2025 = (row: CsvRow): Normalized => ({
   date: parseDate(row["Date"]),
   sport: normalizeSport(row["Sport"]),
-  hours: parseFloat_(row["Hours"]),
+  hours: parseFloatEx(row["Hours"]),
   windAvg: maybeInt(row["Avg (kts)"]),
   windGust: maybeInt(row["Gust (kts)"]),
   kiteSize: parseKiteSize(row["Kite"]),

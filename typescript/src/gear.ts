@@ -1,14 +1,9 @@
 import type { BoardType, Normalized, Sport } from "./parsers";
 
-const parseDate = (dateStr: string): Date => {
-  const [year, month, day] = dateStr.split("-").map(Number);
-  return new Date(year, month - 1, day);
-};
-
-const before = (dateStr: string, d: Date) => d <= parseDate(dateStr);
-const after = (dateStr: string, d: Date) => d >= parseDate(dateStr);
+const before = (dateStr: string, d: Date) => d <= new Date(dateStr);
+const after = (dateStr: string, d: Date) => d >= new Date(dateStr);
 const between = (start: string, end: string, d: Date) =>
-  d >= parseDate(start) && d <= parseDate(end);
+  d >= new Date(start) && d <= new Date(end);
 
 function kiteId(d: Date, kiteSize: string): number | null {
   switch (kiteSize) {
