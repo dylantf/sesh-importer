@@ -78,8 +78,8 @@ let derive_foil_id d name =
   | Some "Phantom-S 840" -> Some 23
   | Some "Eagle 890" -> Some 24
   | Some "Eagle 990" -> Some 25
-  | Some "Ypra-S 785" -> Some 26
-  | Some "Ypra-S 1000" -> Some 27
+  | Some "Ypra-S 785" | Some "Ypra S 785" -> Some 26
+  | Some "Ypra-S 1000" | Some "Ypra S 1000" -> Some 27
   | Some "Veloce 890" -> Some 28
   | _ -> None
 ;;
