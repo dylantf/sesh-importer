@@ -30,6 +30,8 @@ executable importer
     base ^>=4.20.0.0,
     bytestring,
     cassava,
+    directory,
+    filepath,
     postgresql-simple,
     split,
     time,
