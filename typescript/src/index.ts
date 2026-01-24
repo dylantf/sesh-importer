@@ -1,3 +1,5 @@
+import os from "node:os";
+import path from "node:path";
 import { insertData } from "./db";
 import { parseFile } from "./parsers";
 
@@ -10,7 +12,7 @@ function range(start: number, end: number) {
 }
 
 const filePath = (year: number) =>
-  `/home/dylan/Desktop/Sesh Import/${year}.csv`;
+  path.join(os.homedir(), "Desktop", "Sesh Import", `${year}.csv`);
 
 const years = range(2012, 2026);
 
