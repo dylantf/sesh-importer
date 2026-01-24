@@ -5,7 +5,13 @@ mod gear;
 mod parsers;
 
 fn import_path(year: &i32) -> String {
-    format!("/home/dylan/Desktop/Sesh Import/{}.csv", year)
+    let home = std::env::var("HOME").expect("HOME environment variable not set");
+    std::path::PathBuf::from(home)
+        .join("Desktop")
+        .join("Sesh Import")
+        .join(format!("{}.csv", year))
+        .to_string_lossy()
+        .to_string()
 }
 
 #[tokio::main]
