@@ -1,5 +1,11 @@
-let base_dir = "/home/dylan/Desktop/Sesh Import"
-let full_path year = Printf.sprintf "%s/%d.csv" base_dir year
+let home_dir =
+  match Sys.getenv_opt "HOME" with
+  | Some h -> h
+  | None -> failwith "HOME environment variable not set"
+
+let full_path year =
+  let (/) = Filename.concat in
+  home_dir / "Desktop" / "Sesh Import" / Printf.sprintf "%d.csv" year
 
 let read_csv path =
   let ic = open_in path in
