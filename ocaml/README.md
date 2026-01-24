@@ -8,8 +8,9 @@
 ## Setup
 
 ```bash
-opam install dune csv caqti caqti-lwt caqti-driver-postgresql lwt uri
-
+opam switch create . 5.4.0 --deps-only
+eval $(opam env)
+opam install ocaml-lsp-server ocamlformat
 dune build
 ```
 

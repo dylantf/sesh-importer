@@ -19,7 +19,15 @@
  (name importer)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml)
+ (depends
+  (ocaml
+   (>= 5.4))
+  csv
+  caqti
+  caqti-lwt
+  caqti-driver-postgresql
+  lwt
+  uri)
  (tags
   ("add topics" "to describe" your project)))
 
