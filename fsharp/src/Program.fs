@@ -1,11 +1,13 @@
 ﻿module Importer
 
 open Parsers
+open System
+open System.IO
 
 let parseCsvData () =
     let fullPath (year: int) =
-        let dir = "/home/dylan/Desktop/Sesh Import"
-        dir + $"/{year}.csv"
+        let home = Environment.GetFolderPath Environment.SpecialFolder.UserProfile
+        Path.Combine(home, "Desktop", "Sesh Import", $"{year}.csv")
 
     seq { 2012..2026 }
     |> Seq.map (fun year -> parseFile year (fullPath year))
