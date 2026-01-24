@@ -210,7 +210,8 @@ let parse_2024 row =
 
 let parse_2025 row =
   match row with
-  | [ _; date; sport; hours; avg; gust; kite; wing; board_type; foil; board; location; sesh_type; comments ] ->
+  | [ _; date; sport; hours; avg; gust; kite; wing; board_type; foil; board; location; sesh_type; comments ]
+  | [ _; date; sport; hours; avg; gust; kite; wing; board_type; foil; board; location; sesh_type; comments; _ ] ->
     { date = parse_date date
     ; sport = normalize_sport sport
     ; hours = float_of_string hours
