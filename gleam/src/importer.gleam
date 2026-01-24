@@ -1,4 +1,6 @@
 import db
+import envoy
+import filepath
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
@@ -7,7 +9,11 @@ import parsers
 import simplifile
 
 fn import_path(year: Int) -> String {
-  "/home/dylan/Desktop/Sesh Import/" <> int.to_string(year) <> ".csv"
+  let assert Ok(home) = envoy.get("HOME")
+  home
+  |> filepath.join("Desktop")
+  |> filepath.join("Sesh Import")
+  |> filepath.join(int.to_string(year) <> ".csv")
 }
 
 fn read_file(year: Int) -> List(Dict(String, String)) {
