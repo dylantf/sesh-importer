@@ -1,0 +1,22 @@
+module SeshImporter
+
+import Std.File (File, fs)
+import SeshImporter.Parsers
+
+# TODO: derive from $HOME once we know how to read env vars
+val import_dir = "/home/dylan/Desktop/Sesh Import"
+
+fun import_path : (year: Int) -> String
+import_path year = $"{import_dir}/{show year}.csv"
+
+fun import_year : (year: Int) -> Unit needs {File}
+import_year year = {
+  dbg $"=== {show year} ==="
+  let rows = Parsers.parse_file year (import_path year)
+  dbg $"Got {List.length rows} rows"
+  List.iter dbg rows
+}
+
+main () = {
+  List.range 2012 2026 |> List.iter import_year
+} with {fs}

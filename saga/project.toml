@@ -1,0 +1,13 @@
+[project]
+name = "sesh-importer"
+
+[bin]
+main = "src/Main.saga"
+
+# [library]
+# module = "SeshImporter"
+# expose = []
+
+[deps]
+saga_csv = { git = "https://github.com/dylantf/saga_csv", hash = "7238a0c" }
+saga_pgo = { git = "https://github.com/dylantf/saga_pgo", hash = "33c9ac3" }
