@@ -151,9 +151,11 @@ parse_board_type s = case String.trim s {
 fun parse_board_types : (s: String) -> Maybe (List BoardType)
 parse_board_types s = s |> parse_many |> Maybe.map (List.map parse_board_type)
 
-# Pull a column out of a row dict, returning "" for a missing column.
 fun get_field : (key: String) -> (row: Dict String String) -> String
-get_field key row = Dict.get key row |> Maybe.unwrap_or ""
+get_field key row = case Dict.get key row {
+  Just v -> v
+  Nothing -> panic $"Missing column `{key}`"
+}
 
 fun from_2012 : (row: Dict String String) -> Normalized
 from_2012 row = Normalized {

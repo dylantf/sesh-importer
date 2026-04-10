@@ -1,0 +1,142 @@
+module SeshImporter.Gear
+
+import Std.DateTime (Date)
+import SeshImporter.Parsers (Normalized, Sport, BoardType)
+
+# --- Date helpers ---
+# Date has Ord derived in the stdlib so we can use <= / >= directly.
+# `between lo hi d` is `lo <= d <= hi` (both ends inclusive).
+
+fun mk : (year: Int) -> (month: Int) -> (day: Int) -> Date
+mk year month day = Date { year: year, month: month, day: day }
+
+fun between : (lo: Date) -> (hi: Date) -> (d: Date) -> Bool
+between lo hi d = d >= lo && d <= hi
+
+# # --- Kite IDs ---
+
+fun derive_kite_id : (sesh_date: Date) -> (size: String) -> Maybe Int
+derive_kite_id sesh_date size = case size {
+  "12" when sesh_date <= mk 2013 1 15 -> Just 1
+  "8" when sesh_date <= mk 2013 1 15 -> Just 2
+  "12" when between (mk 2013 1 16) (mk 2013 12 7) sesh_date -> Just 3
+  "9" when between (mk 2013 1 16) (mk 2013 12 7) sesh_date -> Just 4
+  "13" when between (mk 2013 12 8) (mk 2014 12 31) sesh_date -> Just 6
+  "9" when between (mk 2013 12 8) (mk 2014 12 31) sesh_date -> Just 7
+  "7" when between (mk 2013 12 8) (mk 2014 12 31) sesh_date -> Just 8
+  "12" when between (mk 2015 1 1) (mk 2017 2 5) sesh_date -> Just 9
+  "10" when between (mk 2016 10 9) (mk 2018 1 24) sesh_date -> Just 10
+  "7" when between (mk 2016 10 9) (mk 2019 10 4) sesh_date -> Just 11
+  "12" when between (mk 2017 2 6) (mk 2022 8 10) sesh_date -> Just 12
+  "10" when between (mk 2018 1 25) (mk 2020 12 31) sesh_date -> Just 13
+  "7" when between (mk 2019 10 5) (mk 2020 12 31) sesh_date -> Just 14
+  "9" when sesh_date >= mk 2021 1 1 -> Just 15
+  "7" when sesh_date >= mk 2021 1 1 -> Just 16
+  _ -> Nothing
+}
+
+pub fun kite_ids : (sesh: Normalized) -> List Int
+kite_ids sesh = case sesh.kite_size {
+  Nothing -> []
+  Just kites -> List.filter_map (derive_kite_id sesh.date) kites
+}
+
+# # --- Foil IDs ---
+
+fun derive_foil_id : (d: Date) -> (foil_name: Maybe String) -> Maybe Int
+derive_foil_id d foil_name = case foil_name {
+  Nothing when d <= mk 2019 5 26 -> Just 17
+  Nothing when d >= mk 2019 5 27 -> Just 18
+  Just "Thruster" -> Just 18
+  Just "ART 999" -> Just 19
+  Just "ART 799" -> Just 20
+  Just "Phantom 1480" -> Just 21
+  Just "Seven Seas 1200" -> Just 22
+  Just "Phantom-S 840" -> Just 23
+  Just "Eagle 890" -> Just 24
+  Just "Eagle 990" -> Just 25
+  Just "Ypra-S 785" | Just "Ypra S 785" -> Just 26
+  Just "Ypra-S 1000" | Just "Ypra S 1000" -> Just 27
+  Just "Veloce 890" -> Just 28
+  _ -> Nothing
+}
+
+fun is_foil_sesh : (sesh: Normalized) -> Bool
+is_foil_sesh sesh = case sesh.board_type {
+  Just bts ->
+    List.any (fun bt -> case bt {
+      Hydrofoil -> True
+      _ -> False
+    }) bts
+  Nothing -> False
+}
+
+pub fun foil_ids : (sesh: Normalized) -> List Int
+foil_ids sesh = case (is_foil_sesh sesh, sesh.foil) {
+  (True, Nothing) -> case derive_foil_id sesh.date Nothing {
+    Just id -> [id]
+    Nothing -> []
+  }
+  (True, Just names) ->
+    List.filter_map (fun name -> derive_foil_id sesh.date (Just name)) names
+  _ -> []
+}
+
+# --- Board IDs ---
+
+fun derive_board_id : (date: Date) -> (board_type: BoardType) -> (board_name: Maybe String) -> Maybe Int
+derive_board_id date board_type board_name = case board_type {
+  Hydrofoil -> case board_name {
+    Just "Groove Skate" | Nothing when date >= mk 2022 8 10 -> Just 31
+    Just "Rocket v2 85L" -> Just 32
+    Just "Rocket v2 60L" | Just "Rocket 60L" -> Just 34
+    Just "Flying Fish 40L" -> Just 33
+    Just "LF Galaxy" -> Just 30
+    Nothing when between (mk 2017 6 24) (mk 2022 8 9) date -> Just 30
+    Nothing when date <= mk 2017 6 23 -> Just 17
+    _ -> Nothing
+  }
+  Surfboard -> Just 43
+  Twintip -> Just 44
+  Skis -> Just 45
+  Snowboard -> Just 46
+  _ -> Nothing
+}
+
+pub fun board_ids : (sesh: Normalized) -> List Int
+board_ids sesh = case sesh.board_type {
+  Just board_types ->
+    List.filter_map (fun bt ->
+      derive_board_id sesh.date bt sesh.foil_board) board_types
+  Nothing -> []
+}
+
+# --- Wing IDs ---
+
+fun derive_wing_id : (sport: Sport) -> (date: Date) -> (size: String) -> Maybe Int
+derive_wing_id sport date size = case (sport, size) {
+  (WingFoiling, "6m") -> Just 35
+  (WingFoiling, "5m") when date <= mk 2024 1 1 -> Just 36
+  (WingFoiling, "5m") when date >= mk 2024 1 1 -> Just 39
+  (WingFoiling, "4m") when date <= mk 2024 1 1 -> Just 37
+  (WingFoiling, "4m") when date >= mk 2024 1 1 -> Just 40
+  (WingFoiling, "5.5m") -> Just 38
+  (WingFoiling, "3m") -> Just 41
+  (Parawinging, "4m") -> Just 42
+  _ -> Nothing
+}
+
+pub fun wing_ids : (sesh: Normalized) -> List Int
+wing_ids sesh = case (sesh.sport, sesh.wing_size) {
+  (WingFoiling, Just sizes) ->
+    List.filter_map (derive_wing_id sesh.sport sesh.date) sizes
+  (Parawinging, Just sizes) ->
+    List.filter_map (derive_wing_id sesh.sport sesh.date) sizes
+  _ -> []
+}
+
+# --- All gear combined ---
+
+pub fun gear_ids : (sesh: Normalized) -> List Int
+gear_ids sesh =
+  List.concat [kite_ids sesh, wing_ids sesh, board_ids sesh, foil_ids sesh]

@@ -1,6 +1,7 @@
 module SeshImporter
 
 import Std.File (File, fs)
+import SeshImporter.Gear
 import SeshImporter.Parsers
 
 # TODO: derive from $HOME once we know how to read env vars
@@ -9,12 +10,18 @@ val import_dir = "/home/dylan/Desktop/Sesh Import"
 fun import_path : (year: Int) -> String
 import_path year = $"{import_dir}/{show year}.csv"
 
+fun dbg_row : (row: Parsers.Normalized) -> Unit
+dbg_row row = {
+  dbg row
+  dbg (Gear.gear_ids row)
+}
+
 fun import_year : (year: Int) -> Unit needs {File}
 import_year year = {
   dbg $"=== {show year} ==="
   let rows = Parsers.parse_file year (import_path year)
   dbg $"Got {List.length rows} rows"
-  List.iter dbg rows
+  List.iter dbg_row rows
 }
 
 main () = {
