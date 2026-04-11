@@ -67,21 +67,6 @@ parse_sport s = case String.trim s {
   _ -> panic $"Unknown sport: `{s}`"
 }
 
-pub fun stringify_sport : (sport: Sport) -> String
-stringify_sport sport = case sport {
-  Kiteboarding -> "kiteboarding"
-  Sup -> "sup"
-  Skiing -> "skiing"
-  Snowboarding -> "snowboarding"
-  MountainBiking -> "mountain biking"
-  Hiking -> "hiking"
-  Running -> "running"
-  Paragliding -> "paragliding"
-  Surfing -> "surfing"
-  WingFoiling -> "wing foiling"
-  Parawinging -> "parawinging"
-}
-
 fun parse_sesh_type : (s: String) -> Maybe SeshType
 parse_sesh_type s = case String.trim s {
   "Spot" -> Just Spot

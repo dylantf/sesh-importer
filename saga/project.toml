@@ -9,5 +9,5 @@ main = "src/Main.saga"
 # expose = []
 
 [deps]
-saga_csv = { git = "https://github.com/dylantf/saga_csv", hash = "7238a0c" }
-saga_pgo = { git = "https://github.com/dylantf/saga_pgo", hash = "33c9ac3" }
+saga_csv = { git = "https://github.com/dylantf/saga_csv" }
+saga_pgo = { git = "https://github.com/dylantf/saga_pgo" }

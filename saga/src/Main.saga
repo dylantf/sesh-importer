@@ -1,6 +1,7 @@
 module SeshImporter
 
 import Std.File (File, fs)
+import SeshImporter.Database
 import SeshImporter.Gear
 import SeshImporter.Parsers
 
@@ -10,20 +11,17 @@ val import_dir = "/home/dylan/Desktop/Sesh Import"
 fun import_path : (year: Int) -> String
 import_path year = $"{import_dir}/{show year}.csv"
 
-fun dbg_row : (row: Parsers.Normalized) -> Unit
-dbg_row row = {
-  dbg row
-  dbg (Gear.gear_ids row)
-}
-
-fun import_year : (year: Int) -> Unit needs {File}
-import_year year = {
-  dbg $"=== {show year} ==="
-  let rows = Parsers.parse_file year (import_path year)
-  dbg $"Got {List.length rows} rows"
-  List.iter dbg_row rows
+fun load_all : (years: List Int) -> List Parsers.Normalized needs {File}
+load_all years = case years {
+  [] -> []
+  y :: rest ->
+    List.append (Parsers.parse_file y (import_path y)) (load_all rest)
 }
 
 main () = {
-  List.range 2012 2026 |> List.iter import_year
+  let normalized =
+    List.range 2012 2026
+    |> load_all
+
+  Database.insert_records normalized
 } with {fs}
