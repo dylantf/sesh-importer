@@ -4,6 +4,7 @@ import Std.DateTime (Date)
 import Std.Dynamic (decode_element, int)
 import SagaPgo (
   Config,
+  Postgres,
   Connection,
   QueryError,
   Returned,
@@ -24,7 +25,7 @@ import SagaPgo (
 import SeshImporter.Gear
 import SeshImporter.Parsers (Normalized, Sport, SeshType)
 
-fun stringify_sport : (sport: Sport) -> String
+fun stringify_sport : Sport -> String
 stringify_sport sport = case sport {
   Kiteboarding -> "kiteboarding"
   Sup -> "sup"
@@ -39,17 +40,17 @@ stringify_sport sport = case sport {
   Parawinging -> "parawinging"
 }
 
-fun stringify_sesh_type : (st: SeshType) -> String
+fun stringify_sesh_type : SeshType -> String
 stringify_sesh_type st = case st {
   Spot -> "spot"
   Downwinder -> "downwinder"
   Roundwinder -> "roundwinder"
 }
 
-fun hours_to_seconds : (hours: Float) -> Int
+fun hours_to_seconds : Float -> Int
 hours_to_seconds hours = Float.ceil (hours * 60.0 * 60.0)
 
-fun is_wind_sport : (sport: Sport) -> Bool
+fun is_wind_sport : Sport -> Bool
 is_wind_sport sport = case sport {
   Kiteboarding -> True
   WingFoiling -> True
@@ -63,9 +64,9 @@ pub record WindDetails {
   sesh_type: String,
 } deriving (Debug)
 
-# Wind sports must have avg, gust, and sesh type.
+# Validates wind sports have required wind details.
 # Non-wind sports always have no wind details.
-fun wind_details_from : (n: Normalized) -> Maybe WindDetails
+fun wind_details_from : Normalized -> Maybe WindDetails
 wind_details_from n = case (
   is_wind_sport n.sport,
   n.wind_avg,
@@ -82,7 +83,7 @@ wind_details_from n = case (
   (False, _, _, _) -> Nothing
 }
 
-pub record MappedSesh {
+record MappedSesh {
   user_id: Int,
   date: Date,
   sport: String,
@@ -93,7 +94,7 @@ pub record MappedSesh {
   gear_ids: List Int,
 } deriving (Debug)
 
-pub fun from_normalized : (n: Normalized) -> MappedSesh
+fun from_normalized : Normalized -> MappedSesh
 from_normalized n = MappedSesh {
   user_id: 1,
   date: n.date,
@@ -105,19 +106,15 @@ from_normalized n = MappedSesh {
   gear_ids: Gear.gear_ids n,
 }
 
-# Decode the `id` column from one returned row. Panics on failure — the
-# server just gave us this row, a decode error means a bug in our column
-# layout, not a recoverable runtime condition.
 fun decode_id : (row: Std.Dynamic.Dynamic) -> Int
 decode_id row = case decode_element 0 int row {
   Ok n -> n
   Err e -> panic $"Failed to decode id from RETURNING row: {debug e}"
 }
 
-#@ Bulk insert all seshes and return them paired with their new ids.
-#@ Order is preserved: zip the input list with the returned id list.
-fun insert_seshes : (conn: Connection) -> (mapped: List MappedSesh) -> Result (List (Int, MappedSesh)) QueryError
-  needs {SagaPgo.Postgres}
+#@ Inserts all base seshes and zips into a tuple paired with its inserted id
+fun insert_seshes : Connection -> List MappedSesh -> Result (List (Int, MappedSesh)) QueryError
+  needs {Postgres}
 insert_seshes conn mapped = {
   sql "INSERT INTO seshes (user_id, date, sport, duration_seconds, location_name, comments)"
   |> push_values mapped (fun m -> [
@@ -136,7 +133,7 @@ insert_seshes conn mapped = {
   })
 }
 
-# Pair each (sesh_id, MappedSesh) with its WindDetails when present.
+# Pair each (sesh_id, MappedSesh) with its WindDetails when present
 fun wind_rows : (with_ids: List (Int, MappedSesh)) -> List (Int, WindDetails)
 wind_rows = List.filter_map (fun pair -> case pair {
   (sesh_id, m) -> case m.wind_details {
@@ -145,7 +142,7 @@ wind_rows = List.filter_map (fun pair -> case pair {
   }
 })
 
-fun insert_wind_details : (conn: Connection) -> (with_ids: List (Int, MappedSesh)) -> Result Int QueryError
+fun insert_wind_details : Connection -> (with_ids: List (Int, MappedSesh)) -> Result Int QueryError
   needs {SagaPgo.Postgres}
 insert_wind_details conn with_ids = {
   let rows = wind_rows with_ids
@@ -165,24 +162,21 @@ insert_wind_details conn with_ids = {
   }
 }
 
-# Flatten each sesh's gear_ids into (sesh_id, gear_id) pairs.
+# Flattens each sesh's gear_ids into (sesh_id, gear_id) pairs
 fun gear_rows : (with_ids: List (Int, MappedSesh)) -> List (Int, Int)
 gear_rows =
   List.flat_map (fun (sesh_id, m) ->
     List.map (fun gid -> (sesh_id, gid)) m.gear_ids)
 
 fun bind_gear_row : (Int, Int) -> List SagaPgo.Value
-bind_gear_row pair = case pair {
-  (sesh_id, gear_id) -> [int_value sesh_id, int_value gear_id]
-}
+bind_gear_row (sesh_id, gear_id) = [int_value sesh_id, int_value gear_id]
 
-fun insert_gear : (conn: Connection) -> (with_ids: List (Int, MappedSesh)) -> Result Int QueryError
+fun insert_gear : Connection -> (with_ids: List (Int, MappedSesh)) -> Result Int QueryError
   needs {SagaPgo.Postgres}
 insert_gear conn with_ids = {
-  let rows = gear_rows with_ids
-  case rows {
+  case gear_rows with_ids {
     [] -> Ok 0
-    _ -> {
+    rows -> {
       sql "INSERT INTO sesh_gear (sesh_id, gear_id)"
       |> push_values rows bind_gear_row
       |> execute conn
@@ -191,42 +185,29 @@ insert_gear conn with_ids = {
   }
 }
 
-fun db_config : Unit -> Config
-db_config () =
+val db_config =
   { default_config "seshtracker_dev" | user: "dylan", password: "dylan" }
 
-record InsertCounts {
-  seshes: Int,
-  wind_details: Int,
-  gear: Int,
-}
-
-#@ Top-level orchestrator: open a connection, map the parsed sessions to
-#@ MappedSesh, and run all inserts inside a single transaction.
 pub fun insert_records : (normalized: List Normalized) -> Unit
 insert_records normalized = {
-  let conn = connect (db_config ())
+  let conn = connect db_config
   let mapped = List.map from_normalized normalized
 
   let result = transaction conn (fun () -> do {
     Ok with_ids <- insert_seshes conn mapped
     Ok wind_count <- insert_wind_details conn with_ids
     Ok gear_count <- insert_gear conn with_ids
-    Ok (InsertCounts {
-      seshes: List.length with_ids,
-      wind_details: wind_count,
-      gear: gear_count,
-    })
+    Ok (List.length with_ids, wind_count, gear_count)
   } else {
     Err e -> Err e
   })
 
   case result {
-    Ok counts -> {
-      dbg $"Inserted {show counts.seshes} seshes"
-      dbg $"Inserted {show counts.wind_details} wind details"
-      dbg $"Inserted {show counts.gear} gear records"
+    Ok (sesh_count, wind_count, gear_count) -> {
+      println $"Inserted {sesh_count} seshes"
+      println $"Inserted {wind_count} wind details"
+      println $"Inserted {gear_count} gear records"
     }
     Err e -> panic $"insert_records failed: {debug e}"
   }
-} with {pg_transaction, pg}
+} with {pg_transaction, pg, console}

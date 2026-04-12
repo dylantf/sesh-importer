@@ -1,8 +1,8 @@
 module SeshImporter.Parsers
 
 import Std.DateTime (Date, to_date)
-import Std.File (File)
-import SagaCsv (reader, parse_keyed)
+import Std.File (File, fs)
+import SagaCsv
 
 pub type Sport =
   | Kiteboarding
@@ -67,7 +67,7 @@ parse_sport s = case String.trim s {
   _ -> panic $"Unknown sport: `{s}`"
 }
 
-fun parse_sesh_type : (s: String) -> Maybe SeshType
+fun parse_sesh_type : String -> Maybe SeshType
 parse_sesh_type s = case String.trim s {
   "Spot" -> Just Spot
   "Downwinder" -> Just Downwinder
@@ -75,33 +75,30 @@ parse_sesh_type s = case String.trim s {
   _ -> Nothing
 }
 
-# Empty/whitespace strings -> Nothing, otherwise Just (trimmed).
-fun maybe_string : (s: String) -> Maybe String
+#@ Convert empty strings to a Nothing value
+fun maybe_string : String -> Maybe String
 maybe_string s = case String.trim s {
   "" -> Nothing
   trimmed -> Just trimmed
 }
 
-# Split a comma-separated string into a list of trimmed pieces.
-# Empty/whitespace input -> Nothing.
-fun parse_many : (s: String) -> Maybe (List String)
+#@ Split a comma-separated string into a list of trimmed pieces
+fun parse_many : String -> Maybe (List String)
 parse_many s =
   s
   |> maybe_string
   |> Maybe.map (fun trimmed ->
     trimmed |> String.split "," |> List.map String.trim)
 
-# Some kites are written "12m", others "12". Strip the trailing "m".
+# Strips trailing "m" on some kite sizes since there is a mix
 fun normalize_kite_sizes : (kites: Maybe (List String)) -> Maybe (List String)
-normalize_kite_sizes kites =
-  kites |> Maybe.map (List.map (String.replace "m" ""))
+normalize_kite_sizes = Maybe.map (List.map (String.replace "m" ""))
 
-# Optional integer column: missing/empty -> Nothing, else parse.
-fun parse_optional_int : (s: String) -> Maybe Int
-parse_optional_int s = s |> maybe_string |> Maybe.and_then Int.parse
+fun parse_optional_int : String -> Maybe Int
+parse_optional_int = maybe_string >> Maybe.and_then Int.parse
 
 # Required date column. Format is "%m/%d/%Y" for the older schemas.
-fun parse_date : (s: String) -> Date
+fun parse_date : String -> Date
 parse_date s = {
   let trimmed = String.trim s
   case Std.DateTime.parse "%m/%d/%Y" trimmed {
@@ -110,7 +107,7 @@ parse_date s = {
   }
 }
 
-fun parse_hours : (s: String) -> Float
+fun parse_hours : String -> Float
 parse_hours s = {
   let trimmed = String.trim s
   case Float.parse trimmed {
@@ -119,7 +116,7 @@ parse_hours s = {
   }
 }
 
-fun parse_board_type : (s: String) -> BoardType
+fun parse_board_type : String -> BoardType
 parse_board_type s = case String.trim s {
   "Twintip" -> Twintip
   "Twintp" -> Twintip
@@ -133,8 +130,8 @@ parse_board_type s = case String.trim s {
   _ -> panic $"Unhandled board type: `{s}`"
 }
 
-fun parse_board_types : (s: String) -> Maybe (List BoardType)
-parse_board_types s = s |> parse_many |> Maybe.map (List.map parse_board_type)
+fun parse_board_types : String -> Maybe (List BoardType)
+parse_board_types = parse_many >> Maybe.map (List.map parse_board_type)
 
 fun get_field : (key: String) -> (row: Dict String String) -> String
 get_field key row = case Dict.get key row {
@@ -262,21 +259,24 @@ from_2025 row = Normalized {
 }
 
 pub fun parse_file : (year: Int) -> (path: String) -> List Normalized
-  needs {File}
 parse_file year path = {
   let contents = case File.read! path {
     Ok content -> content
     Err _ -> panic $"Failed to read {path}"
   }
-  let rows = reader () |> parse_keyed contents
-  case year {
-    2012 -> List.map from_2012 rows
-    2013 -> List.map from_2013 rows
-    2014 -> List.map from_2014 rows
-    2015 -> List.map from_2015 rows
-    2016 | 2017 | 2018 | 2019 | 2020 | 2021 -> List.map from_2016 rows
-    2022 | 2023 | 2024 -> List.map from_2022 rows
-    2025 | 2026 -> List.map from_2025 rows
-    _ -> panic $"No parser for year {show year}"
+
+  let parser = case year {
+    2012 -> from_2012
+    2013 -> from_2013
+    2014 -> from_2014
+    2015 -> from_2015
+    2016 | 2017 | 2018 | 2019 | 2020 | 2021 -> from_2016
+    2022 | 2023 | 2024 -> from_2022
+    2025 | 2026 -> from_2025
+    _ -> panic $"No parser for year {year}"
   }
-}
+
+  SagaCsv.reader ()
+  |> SagaCsv.parse_keyed contents
+  |> List.map parser
+} with fs
