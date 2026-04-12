@@ -9,19 +9,16 @@ import SagaPgo (
   QueryError,
   Returned,
   connect,
-  date_value,
   default_config,
   execute,
-  int_value,
-  maybe_null,
   pg,
   pg_transaction,
   push,
   push_values,
   sql,
-  text,
   transaction
 )
+import SagaPgo.Types (pg_int, pg_text, pg_date, maybe_null)
 import SeshImporter.Gear
 import SeshImporter.Parsers (Normalized, Sport, SeshType)
 
@@ -118,12 +115,12 @@ fun insert_seshes : Connection -> List MappedSesh -> Result (List (Int, MappedSe
 insert_seshes conn mapped = {
   sql "INSERT INTO seshes (user_id, date, sport, duration_seconds, location_name, comments)"
   |> push_values mapped (fun m -> [
-    int_value m.user_id,
-    date_value m.date,
-    text m.sport,
-    int_value m.duration_seconds,
-    maybe_null text m.location,
-    maybe_null text m.comments,
+    pg_int m.user_id,
+    pg_date m.date,
+    pg_text m.sport,
+    pg_int m.duration_seconds,
+    maybe_null pg_text m.location,
+    maybe_null pg_text m.comments,
   ])
   |> push "RETURNING id"
   |> execute conn
@@ -151,10 +148,10 @@ insert_wind_details conn with_ids = {
     _ -> {
       sql "INSERT INTO wind_sesh_details (sesh_id, wind_avg, wind_gust, sesh_type)"
       |> push_values rows (fun (sesh_id, wd) -> [
-        int_value sesh_id,
-        int_value wd.wind_avg,
-        int_value wd.wind_gust,
-        text wd.sesh_type,
+        pg_int sesh_id,
+        pg_int wd.wind_avg,
+        pg_int wd.wind_gust,
+        pg_text wd.sesh_type,
       ])
       |> execute conn
       |> Result.map (fun returned -> returned.count)
@@ -168,8 +165,8 @@ gear_rows =
   List.flat_map (fun (sesh_id, m) ->
     List.map (fun gid -> (sesh_id, gid)) m.gear_ids)
 
-fun bind_gear_row : (Int, Int) -> List SagaPgo.Value
-bind_gear_row (sesh_id, gear_id) = [int_value sesh_id, int_value gear_id]
+fun bind_gear_row : (Int, Int) -> List Types.Value
+bind_gear_row (sesh_id, gear_id) = [pg_int sesh_id, pg_int gear_id]
 
 fun insert_gear : Connection -> (with_ids: List (Int, MappedSesh)) -> Result Int QueryError
   needs {SagaPgo.Postgres}
