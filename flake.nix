@@ -51,6 +51,7 @@
             rustfmt
             clippy
             rust-analyzer
+            openssl
 
             # TypeScript
             bun
@@ -61,6 +62,7 @@
           ];
 
           shellHook = ''
+            export RUST_SRC_PATH="${pkgs.rustPlatform.rustLibSrc}"
             echo "sesh-importer dev shell"
           '';
         };

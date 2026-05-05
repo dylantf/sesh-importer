@@ -105,6 +105,7 @@ fn derive_board_id(
             Some("Rocket v2 60L") | Some("Rocket 60L") => Some(34),
             Some("Flying Fish 40L") => Some(33),
             Some("LF Galaxy") => Some(30),
+            Some("Cruzader 72L") => Some(47),
             None if between("2017-06-24", "2022-08-09", date) => Some(30),
             None if before("2017-06-23", date) => Some(17),
             _ => None,
