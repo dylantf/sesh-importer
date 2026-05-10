@@ -22,6 +22,10 @@ import SagaPgo.Types (pg_int, pg_text, pg_date, maybe_null)
 import SeshImporter.Gear
 import SeshImporter.Parsers (Normalized, Sport, SeshType)
 
+effect DbCtx {
+  fun conn : Unit -> Connection
+}
+
 fun stringify_sport : Sport -> String
 stringify_sport sport = case sport {
   Kiteboarding -> "kiteboarding"
@@ -110,9 +114,9 @@ decode_id row = case decode_element 0 int row {
 }
 
 #@ Inserts all base seshes and zips into a tuple paired with its inserted id
-fun insert_seshes : Connection -> List MappedSesh -> Result (List (Int, MappedSesh)) QueryError
-  needs {Postgres}
-insert_seshes conn mapped = {
+fun insert_seshes : List MappedSesh -> Result (List (Int, MappedSesh)) QueryError
+  needs {Postgres, DbCtx}
+insert_seshes mapped = {
   sql "INSERT INTO seshes (user_id, date, sport, duration_seconds, location_name, comments)"
   |> push_values mapped (fun m -> [
     pg_int m.user_id,
@@ -123,7 +127,7 @@ insert_seshes conn mapped = {
     maybe_null pg_text m.comments,
   ])
   |> push "RETURNING id"
-  |> execute conn
+  |> execute (conn! ())
   |> Result.map (fun returned -> {
     let ids = List.map decode_id returned.rows
     List.zip ids mapped
@@ -139,9 +143,9 @@ wind_rows = List.filter_map (fun pair -> case pair {
   }
 })
 
-fun insert_wind_details : Connection -> (with_ids: List (Int, MappedSesh)) -> Result Int QueryError
-  needs {SagaPgo.Postgres}
-insert_wind_details conn with_ids = {
+fun insert_wind_details : (with_ids: List (Int, MappedSesh)) -> Result Int QueryError
+  needs {Postgres, DbCtx}
+insert_wind_details with_ids = {
   let rows = wind_rows with_ids
   case rows {
     [] -> Ok 0
@@ -153,7 +157,7 @@ insert_wind_details conn with_ids = {
         pg_int wd.wind_gust,
         pg_text wd.sesh_type,
       ])
-      |> execute conn
+      |> execute (conn! ())
       |> Result.map (fun returned -> returned.count)
     }
   }
@@ -168,15 +172,15 @@ gear_rows =
 fun bind_gear_row : (Int, Int) -> List Types.Value
 bind_gear_row (sesh_id, gear_id) = [pg_int sesh_id, pg_int gear_id]
 
-fun insert_gear : Connection -> (with_ids: List (Int, MappedSesh)) -> Result Int QueryError
-  needs {SagaPgo.Postgres}
-insert_gear conn with_ids = {
+fun insert_gear : (with_ids: List (Int, MappedSesh)) -> Result Int QueryError
+  needs {Postgres, DbCtx}
+insert_gear with_ids = {
   case gear_rows with_ids {
     [] -> Ok 0
     rows -> {
       sql "INSERT INTO sesh_gear (sesh_id, gear_id)"
       |> push_values rows bind_gear_row
-      |> execute conn
+      |> execute (conn! ())
       |> Result.map (fun returned -> returned.count)
     }
   }
@@ -187,16 +191,20 @@ val db_config =
 
 pub fun insert_records : (normalized: List Normalized) -> Unit
 insert_records normalized = {
-  let conn = connect db_config
+  let db_conn = connect db_config
   let mapped = List.map from_normalized normalized
 
-  let result = transaction conn (fun () -> do {
-    Ok with_ids <- insert_seshes conn mapped
-    Ok wind_count <- insert_wind_details conn with_ids
-    Ok gear_count <- insert_gear conn with_ids
-    Ok (List.length with_ids, wind_count, gear_count)
-  } else {
-    Err e -> Err e
+  let result = transaction db_conn (fun () -> {
+    do {
+      Ok with_ids <- insert_seshes mapped
+      Ok wind_count <- insert_wind_details with_ids
+      Ok gear_count <- insert_gear with_ids
+      Ok (List.length with_ids, wind_count, gear_count)
+    } else {
+      Err e -> Err e
+    }
+  } with {
+    conn () = resume db_conn
   })
 
   case result {

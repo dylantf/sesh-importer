@@ -21,6 +21,8 @@
       in
       {
         devShells.default = pkgs.mkShell {
+          buildInputs = [ pkgs.bashInteractive ];
+
           packages = with pkgs; [
             # F#
             dotnet-sdk_10
