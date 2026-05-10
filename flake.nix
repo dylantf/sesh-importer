@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    saga.url = "github:dylantf/saga";
+    # saga.url = "github:dylantf/saga";
   };
 
   outputs =
@@ -12,7 +12,7 @@
       self,
       nixpkgs,
       flake-utils,
-      saga,
+      # saga,
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
@@ -28,7 +28,7 @@
 
             # Gleam
             gleam
-            erlang_27
+            erlang_28
             rebar3
 
             # Haskell
@@ -58,7 +58,7 @@
             nodejs_22
             typescript
 
-            saga.packages.${system}.default
+            # saga.packages.${system}.default
           ];
 
           shellHook = ''

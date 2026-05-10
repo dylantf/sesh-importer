@@ -1,12 +1,18 @@
 module SeshImporter
 
+import Std.Env (Env, system_env)
 import Std.File (File, fs)
 import SeshImporter.Database
 import SeshImporter.Gear
 import SeshImporter.Parsers (parse_file)
 
-# TODO: derive from $HOME once we know how to read env vars
-import_path year = $"/home/dylan/Desktop/Sesh Import/{year}.csv"
+import_path year = {
+  let home =
+    Env.get! "HOME"
+    |> Maybe.unwrap_or "/home/dylan"
+
+  $"{home}/Desktop/Sesh Import/{year}.csv"
+} with system_env
 
 main () = {
   let normalized =
