@@ -91,6 +91,7 @@ boardId date boardName Hydrofoil =
     Just "Rocket 60L" -> Just 34
     Just "Flying Fish 40L" -> Just 33
     Just "LF Galaxy" -> Just 30
+    Just "Cruzader 72L" -> Just 47
     _ -> Nothing
 boardId _ _ bt =
   case bt of
