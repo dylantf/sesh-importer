@@ -114,7 +114,8 @@ decode_id row = case decode_element 0 int row {
 }
 
 #@ Inserts all base seshes and zips into a tuple paired with its inserted id
-fun insert_seshes : List MappedSesh -> Result (List (Int, MappedSesh)) QueryError
+fun insert_seshes : List MappedSesh
+  -> Result (List (Int, MappedSesh)) QueryError
   needs {Postgres, DbCtx}
 insert_seshes mapped = {
   sql "INSERT INTO seshes (user_id, date, sport, duration_seconds, location_name, comments)"
@@ -143,7 +144,8 @@ wind_rows = List.filter_map (fun pair -> case pair {
   }
 })
 
-fun insert_wind_details : (with_ids: List (Int, MappedSesh)) -> Result Int QueryError
+fun insert_wind_details : (with_ids: List (Int, MappedSesh))
+  -> Result Int QueryError
   needs {Postgres, DbCtx}
 insert_wind_details with_ids = {
   let rows = wind_rows with_ids
@@ -186,7 +188,7 @@ insert_gear with_ids = {
   }
 }
 
-val db_config =
+db_config =
   { default_config "seshtracker_dev" | user: "dylan", password: "dylan" }
 
 pub fun insert_records : (normalized: List Normalized) -> Unit

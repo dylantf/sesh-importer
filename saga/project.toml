@@ -9,5 +9,5 @@ main = "src/Main.saga"
 # expose = []
 
 [deps]
-saga_csv = { git = "https://github.com/dylantf/saga_csv" }
-saga_pgo = { git = "https://github.com/dylantf/saga_pgo" }
+saga_csv = { git = "../../saga_csv" }
+saga_pgo = { path = "../../saga_pgo" }
