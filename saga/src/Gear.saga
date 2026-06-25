@@ -80,6 +80,7 @@ derive_board_id date board_type board_name = case board_type {
     Just "Groove Skate" | Nothing when date >= mk 2022 8 10 -> Just 31
     Just "Rocket v2 85L" -> Just 32
     Just "Rocket v2 60L" | Just "Rocket 60L" -> Just 34
+    Just "Cruzader 72L" -> Just 47
     Just "Flying Fish 40L" -> Just 33
     Just "LF Galaxy" -> Just 30
     Nothing when between (mk 2017 6 24) (mk 2022 8 9) date -> Just 30

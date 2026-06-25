@@ -11,3 +11,5 @@ main = "src/Main.saga"
 [deps]
 saga_csv = { git = "../../saga_csv" }
 saga_pgo = { path = "../../saga_pgo" }
+saga_json = { path = "../../saga_json" }
+kraken = { path = "../../kraken" }
