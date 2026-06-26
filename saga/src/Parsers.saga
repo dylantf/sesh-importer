@@ -1,6 +1,7 @@
 module SeshImporter.Parsers
 
 import Std.DateTime (Date, to_date)
+import Std.Fail (Fail)
 import Std.File (File, fs)
 import SagaCsv
 import SeshImporter.Db.Sesh (Sport)
@@ -32,6 +33,7 @@ pub record Normalized {
   comments: Maybe String,
 } deriving (Debug)
 
+fun parse_sport : String -> Sport needs {Fail}
 parse_sport s = case String.trim s {
   "Kiteboarding" -> Kiteboarding
   "SUP" -> Sup
@@ -45,7 +47,7 @@ parse_sport s = case String.trim s {
   "Surf" -> Surfing
   "Wing foiling" -> WingFoiling
   "Parawinging" -> Parawinging
-  _ -> panic $"Unknown sport: `{s}`"
+  _ -> fail! $"Unknown sport: `{s}`"
 }
 
 parse_sesh_type s = case String.trim s {
@@ -77,25 +79,25 @@ fun parse_optional_int : String -> Maybe Int
 parse_optional_int = maybe_string >> Maybe.and_then Int.parse
 
 # Required date column. Format is "%m/%d/%Y" for the older schemas.
-fun parse_date : String -> Date
+fun parse_date : String -> Date needs {Fail}
 parse_date s = {
   let trimmed = String.trim s
   case Std.DateTime.parse "%m/%d/%Y" trimmed {
     Ok dt -> to_date dt
-    Err _ -> panic $"Failed to parse date `{s}`"
+    Err _ -> fail! $"Failed to parse date `{s}`"
   }
 }
 
-fun parse_hours : String -> Float
+fun parse_hours : String -> Float needs {Fail}
 parse_hours s = {
   let trimmed = String.trim s
   case Float.parse trimmed {
     Just h -> h
-    Nothing -> panic $"Failed to parse hours `{s}`"
+    Nothing -> fail! $"Failed to parse hours `{s}`"
   }
 }
 
-fun parse_board_type : String -> BoardType
+fun parse_board_type : String -> BoardType needs {Fail}
 parse_board_type s = case String.trim s {
   "Twintip" -> Twintip
   "Twintp" -> Twintip
@@ -106,19 +108,16 @@ parse_board_type s = case String.trim s {
   "Skis" -> Skis
   "Snowboard" -> Snowboard
   "Skim" -> Other
-  _ -> panic $"Unhandled board type: `{s}`"
+  _ -> fail! $"Unhandled board type: `{s}`"
 }
 
-fun parse_board_types : String -> Maybe (List BoardType)
 parse_board_types = parse_many >> Maybe.map (List.map parse_board_type)
 
-fun get_field : (key: String) -> (row: Dict String String) -> String
 get_field key row = case Dict.get key row {
   Just v -> v
-  Nothing -> panic $"Missing column `{key}`"
+  Nothing -> fail! $"Missing column `{key}`"
 }
 
-fun from_2012 : (row: Dict String String) -> Normalized
 from_2012 row = Normalized {
   date: row |> get_field "Date" |> parse_date,
   sport: row |> get_field "Sport" |> parse_sport,
@@ -135,7 +134,6 @@ from_2012 row = Normalized {
   comments: row |> get_field "Comments" |> maybe_string,
 }
 
-fun from_2013 : (row: Dict String String) -> Normalized
 from_2013 row = Normalized {
   date: row |> get_field "Date" |> parse_date,
   sport: row |> get_field "Sport" |> parse_sport,
@@ -152,7 +150,6 @@ from_2013 row = Normalized {
   comments: row |> get_field "Comments" |> maybe_string,
 }
 
-fun from_2014 : (row: Dict String String) -> Normalized
 from_2014 row = Normalized {
   date: row |> get_field "Day" |> parse_date,
   sport: row |> get_field "Sport" |> parse_sport,
@@ -169,7 +166,6 @@ from_2014 row = Normalized {
   comments: row |> get_field "Comments" |> maybe_string,
 }
 
-fun from_2015 : (row: Dict String String) -> Normalized
 from_2015 row = Normalized {
   date: row |> get_field "Date" |> parse_date,
   sport: row |> get_field "Sport" |> parse_sport,
@@ -186,7 +182,6 @@ from_2015 row = Normalized {
   comments: row |> get_field "Comments" |> maybe_string,
 }
 
-fun from_2016 : (row: Dict String String) -> Normalized
 from_2016 row = Normalized {
   date: row |> get_field "Date" |> parse_date,
   sport: row |> get_field "Sport" |> parse_sport,
@@ -203,7 +198,6 @@ from_2016 row = Normalized {
   comments: row |> get_field "Comments" |> maybe_string,
 }
 
-fun from_2022 : (row: Dict String String) -> Normalized
 from_2022 row = Normalized {
   date: row |> get_field "Date" |> parse_date,
   sport: row |> get_field "Sport" |> parse_sport,
@@ -220,7 +214,6 @@ from_2022 row = Normalized {
   comments: row |> get_field "Comments" |> maybe_string,
 }
 
-fun from_2025 : (row: Dict String String) -> Normalized
 from_2025 row = Normalized {
   date: row |> get_field "Date" |> parse_date,
   sport: row |> get_field "Sport" |> parse_sport,
@@ -238,10 +231,11 @@ from_2025 row = Normalized {
 }
 
 pub fun parse_file : (year: Int) -> (path: String) -> List Normalized
+  needs {Fail}
 parse_file year path = {
   let contents = case File.read! path {
     Ok content -> content
-    Err _ -> panic $"Failed to read {path}"
+    Err _ -> fail! $"Failed to read {path}"
   }
 
   let parser = case year {
@@ -252,7 +246,7 @@ parse_file year path = {
     2016 | 2017 | 2018 | 2019 | 2020 | 2021 -> from_2016
     2022 | 2023 | 2024 -> from_2022
     2025 | 2026 -> from_2025
-    _ -> panic $"No parser for year {year}"
+    _ -> fail! $"No parser for year {year}"
   }
 
   SagaCsv.reader ()

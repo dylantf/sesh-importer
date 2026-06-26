@@ -2,8 +2,9 @@ module SeshImporter.Database
 
 import Std.DateTime (Date)
 import Std.Dynamic (decode_element, int)
+import Std.Fail (Fail)
 import Kraken.Core (ColumnSet, Selectable, Insertable)
-import Kraken.Db (table, Generated, Col, col, DbError)
+import Kraken.Db (table, Generated, Col, col, DbError, Rollback, Transaction)
 import SagaPgo (Connection, default_config, connect, pg_transaction, pg)
 import SagaPgo.Types (pg_int, pg_text, pg_date, maybe_null)
 import SeshImporter.Db.Gear (SeshGearInsert, sesh_gear_table)
@@ -39,10 +40,11 @@ sesh_insert_from_normalized n = SeshInsert {
   comments: n.comments,
 }
 
-# Validates wind sports have required wind details.
+# Validates wind sports have required wind details, rolling back the
+# transaction on a wind sport that's missing them.
 # Non-wind sports always have no wind details.
 fun wind_insert_from_normalized : (Normalized, Int)
-  -> Maybe WindSeshDetailsInsert
+  -> Maybe WindSeshDetailsInsert needs {Rollback}
 wind_insert_from_normalized (n, sesh_id) = case (
   is_wind_sport n.sport,
   n.wind_avg,
@@ -57,7 +59,7 @@ wind_insert_from_normalized (n, sesh_id) = case (
       wind_gust: gust,
       sesh_type: st,
     })
-  (True, _, _, _) -> panic $"Wind sport missing wind data: {debug n}"
+  (True, _, _, _) -> rollback! $"wind sport missing wind data: {debug n}"
   (False, _, _, _) -> Nothing
 }
 
@@ -106,7 +108,7 @@ insert_gear items = {
 db_config =
   { default_config "seshtracker_dev" | user: "dylan", password: "dylan" }
 
-pub fun insert_records : (normalized: List Normalized) -> Unit
+pub fun insert_records : (normalized: List Normalized) -> Unit needs {Fail}
 insert_records items = {
   let db_conn = connect db_config
 
@@ -119,7 +121,9 @@ insert_records items = {
       Ok gear_count <- insert_gear with_ids
       Ok (List.length with_ids, wind_count, gear_count)
     } else {
-      Err e -> Err e
+      # Render the DbError into the transaction's String channel, the same
+      # channel rollback! uses for validation failures.
+      Err e -> Err (debug e)
     }
   } with {
     conn () = resume db_conn
@@ -131,6 +135,8 @@ insert_records items = {
       println $"Inserted {wind_count} wind details"
       println $"Inserted {gear_count} gear records"
     }
-    Err e -> panic $"insert_records failed: {debug e}"
+    Err (Db.TransactionFailed query_error) ->
+      fail! $"database transaction failed: {debug query_error}"
+    Err (Db.RolledBack msg) -> fail! $"import rolled back: {msg}"
   }
 } with {pg_transaction, pg, console}

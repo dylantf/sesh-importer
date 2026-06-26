@@ -1,7 +1,9 @@
 module SeshImporter
 
 import Std.Env (Env, system_env)
+import Std.Fail (Fail)
 import Std.File (File, fs)
+import Std.Process
 import SeshImporter.Database
 import SeshImporter.Gear
 import SeshImporter.Parsers (parse_file)
@@ -15,9 +17,22 @@ import_path year = {
 } with system_env
 
 main () = {
-  let normalized =
+  # One Fail boundary for the whole import: parse failures and the
+  # transaction's rolled-back/failed errors all land here.
+  let outcome = {
     List.range 2012 2026
     |> List.flat_map (fun year -> parse_file year (import_path year))
+    |> Database.insert_records
+  } with {
+    fail msg = Err msg
+    return value = Ok value
+  }
 
-  Database.insert_records normalized
+  case outcome {
+    Ok _ -> ()
+    Err msg -> {
+      dbg $"Import failed: {msg}"
+      Process.exit 1
+    }
+  }
 }

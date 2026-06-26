@@ -21,6 +21,8 @@ pub type SeshType =
   deriving (Debug)
 
 pub record WindSeshDetails {
+  id: Db.Generated,
+  sesh_id: Int,
   wind_avg: Int,
   wind_gust: Int,
   sesh_type: SeshType,
