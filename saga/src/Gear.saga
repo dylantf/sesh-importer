@@ -1,7 +1,8 @@
 module SeshImporter.Gear
 
 import Std.DateTime (Date)
-import SeshImporter.Parsers (Normalized, Sport, BoardType)
+import SeshImporter.Db.Sesh (Sport)
+import SeshImporter.Parsers (Normalized, BoardType)
 
 fun mk : (year: Int) -> (month: Int) -> (day: Int) -> Date
 mk year month day = Date { year: year, month: month, day: day }
@@ -74,7 +75,10 @@ foil_ids sesh = case (is_foil_sesh sesh, sesh.foil) {
   _ -> []
 }
 
-fun derive_board_id : Date -> BoardType -> (board_name: Maybe String) -> Maybe Int
+fun derive_board_id : Date
+  -> BoardType
+  -> (board_name: Maybe String)
+  -> Maybe Int
 derive_board_id date board_type board_name = case board_type {
   Hydrofoil -> case board_name {
     Just "Groove Skate" | Nothing when date >= mk 2022 8 10 -> Just 31

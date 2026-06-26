@@ -3,26 +3,8 @@ module SeshImporter.Parsers
 import Std.DateTime (Date, to_date)
 import Std.File (File, fs)
 import SagaCsv
-
-pub type Sport =
-  | Kiteboarding
-  | Sup
-  | Skiing
-  | Snowboarding
-  | MountainBiking
-  | Hiking
-  | Running
-  | Paragliding
-  | Surfing
-  | WingFoiling
-  | Parawinging
-  deriving (Debug)
-
-pub type SeshType =
-  | Spot
-  | Downwinder
-  | Roundwinder
-  deriving (Debug)
+import SeshImporter.Db.Sesh (Sport)
+import SeshImporter.Db.WindSeshDetails (SeshType)
 
 pub type BoardType =
   | Twintip
@@ -50,7 +32,6 @@ pub record Normalized {
   comments: Maybe String,
 } deriving (Debug)
 
-pub fun parse_sport : (s: String) -> Sport
 parse_sport s = case String.trim s {
   "Kiteboarding" -> Kiteboarding
   "SUP" -> Sup
@@ -67,7 +48,6 @@ parse_sport s = case String.trim s {
   _ -> panic $"Unknown sport: `{s}`"
 }
 
-fun parse_sesh_type : String -> Maybe SeshType
 parse_sesh_type s = case String.trim s {
   "Spot" -> Just Spot
   "Downwinder" -> Just Downwinder
@@ -76,7 +56,6 @@ parse_sesh_type s = case String.trim s {
 }
 
 #@ Convert empty strings to a Nothing value
-fun maybe_string : String -> Maybe String
 maybe_string s = case String.trim s {
   "" -> Nothing
   trimmed -> Just trimmed

@@ -6,157 +6,21 @@ import Kraken.Core (ColumnSet, Selectable, Insertable)
 import Kraken.Db (table, Generated, Col, col, DbError)
 import SagaPgo (Connection, default_config, connect, pg_transaction, pg)
 import SagaPgo.Types (pg_int, pg_text, pg_date, maybe_null)
+import SeshImporter.Db.Gear (SeshGearInsert, sesh_gear_table)
+import SeshImporter.Db.Sesh (Sport, Sesh, SeshRow, SeshInsert, seshes_table)
+import SeshImporter.Db.WindSeshDetails (
+  WindSeshDetailsInsert,
+  wind_sesh_details_table
+)
 import SeshImporter.Gear
-import SeshImporter.Parsers (Normalized, Sport, SeshType)
+import SeshImporter.Parsers (Normalized)
 
 effect DbCtx {
   fun conn : Unit -> SagaPgo.Connection
 }
 
-record Sesh {
-  user_id: Int,
-  date: Date,
-  sport: Sport,
-  duration_seconds: Int,
-  location_name: Maybe String,
-  comments: Maybe String,
-}
-
-record SeshesRow {
-  id: Generated Int,
-  user_id: Col Int,
-  date: Col Date,
-  sport: Col Sport,
-  duration_seconds: Col Int,
-  location_name: Col (Maybe String),
-  comments: Col (Maybe String),
-} deriving (Selectable Sesh, Insertable SeshesRowInsert, Core.ColumnNameMap)
-
-impl ColumnSet for SeshesRow {
-  primary_key s = Db.key s.id
-  columns source = SeshesRow {
-    id: Db.generated "id" source,
-    user_id: col "user_id" source,
-    date: col "date" source,
-    sport: col "sport" source,
-    duration_seconds: col "duration_seconds" source,
-    location_name: col "location_name" source,
-    comments: col "comments" source,
-  }
-}
-
-fun seshes : Db.Table SeshesRow
-seshes = Db.table "seshes"
-
-record WindDetails {
-  wind_avg: Int,
-  wind_gust: Int,
-  sesh_type: SeshType,
-}
-
-record WindDetailsRow {
-  id: Generated Int,
-  sesh_id: Col Int,
-  wind_avg: Col Int,
-  wind_gust: Col Int,
-  sesh_type: Col SeshType,
-} deriving (Selectable WindDetails, Insertable WindDetailsInsertRow, Core.ColumnNameMap)
-
-impl ColumnSet for WindDetailsRow {
-  primary_key wd = Db.key wd.id
-  columns source = WindDetailsRow {
-    id: Db.generated "id" source,
-    sesh_id: col "sesh_id" source,
-    wind_avg: col "wind_avg" source,
-    wind_gust: col "wind_gust" source,
-    sesh_type: col "sesh_type" source,
-  }
-}
-
-fun wind_sesh_details : Db.Table WindDetailsRow
-wind_sesh_details = Db.table "wind_sesh_details"
-
-record SeshGear {
-  id: Int,
-  sesh_id: Int,
-  gear_id: Int,
-}
-
-record SeshGearRow {
-  id: Generated Int,
-  sesh_id: Col Int,
-  gear_id: Col Int,
-} deriving (Selectable SeshGear, Insertable SeshGearInsertRow, Core.ColumnNameMap)
-
-impl ColumnSet for SeshGearRow {
-  primary_key sg = Db.key sg.id
-  columns source = SeshGearRow {
-    id: Db.generated "id" source,
-    sesh_id: col "sesh_id" source,
-    gear_id: col "gear_id" source,
-  }
-}
-
-fun sesh_gear : Db.Table SeshGearRow
-sesh_gear = Db.table "sesh_gear"
-
-impl Db.PgType for Sport {
-  encode_pg value =
-    Db.encode_value (case value {
-      Kiteboarding -> "kiteboarding"
-      Sup -> "sup"
-      Skiing -> "skiing"
-      Snowboarding -> "snowboarding"
-      MountainBiking -> "mountain biking"
-      Hiking -> "hiking"
-      Running -> "running"
-      Paragliding -> "paragliding"
-      Surfing -> "surfing"
-      WingFoiling -> "wing foiling"
-      Parawinging -> "parawinging"
-    })
-  decode_pg = Db.decode_via (fun value -> case value {
-    "kiteboarding" -> Ok Kiteboarding
-    "sup" -> Ok Sup
-    "skiing" -> Ok Skiing
-    "snowboarding" -> Ok Snowboarding
-    "mountain biking" -> Ok MountainBiking
-    "hiking" -> Ok Hiking
-    "running" -> Ok Running
-    "paragliding" -> Ok Paragliding
-    "surfing" -> Ok Surfing
-    "wing foiling" -> Ok WingFoiling
-    "parawinging" -> Ok Parawinging
-    other -> Err $"unknown sport: {other}"
-  })
-}
-impl Db.InsertCol for Sport {
-  insert_col value = Just (Db.encode_value value)
-}
-
-impl Db.PgType for SeshType {
-  encode_pg value =
-    Db.encode_value (case value {
-      Spot -> "spot"
-      Downwinder -> "downwinder"
-      Roundwinder -> "roundwinder"
-    })
-  decode_pg = Db.decode_via (fun value -> case value {
-    "spot" -> Ok Spot
-    "downwinder" -> Ok Downwinder
-    "roundwinder" -> Ok Roundwinder
-    other -> Err $"unknown sport type {other}"
-  })
-}
-
-impl Db.InsertCol for SeshType {
-  insert_col value = Just (Db.encode_value value)
-}
-
-fun hours_to_seconds : Float -> Int
 hours_to_seconds hours = Float.ceil (hours * 60.0 * 60.0)
 
-fun is_wind_sport : Sport -> Bool
 is_wind_sport sport = case sport {
   Kiteboarding -> True
   WingFoiling -> True
@@ -164,8 +28,8 @@ is_wind_sport sport = case sport {
   _ -> False
 }
 
-fun sesh_insert_from_normalized : Normalized -> SeshesRowInsert
-sesh_insert_from_normalized n = SeshesRowInsert {
+fun sesh_insert_from_normalized : Normalized -> SeshInsert
+sesh_insert_from_normalized n = SeshInsert {
   id: Db.auto,
   user_id: 1,
   date: n.date,
@@ -178,7 +42,7 @@ sesh_insert_from_normalized n = SeshesRowInsert {
 # Validates wind sports have required wind details.
 # Non-wind sports always have no wind details.
 fun wind_insert_from_normalized : (Normalized, Int)
-  -> Maybe WindDetailsInsertRow
+  -> Maybe WindSeshDetailsInsert
 wind_insert_from_normalized (n, sesh_id) = case (
   is_wind_sport n.sport,
   n.wind_avg,
@@ -186,7 +50,7 @@ wind_insert_from_normalized (n, sesh_id) = case (
   n.sesh_type,
 ) {
   (True, Just avg, Just gust, Just st) ->
-    Just (WindDetailsInsertRow {
+    Just (WindSeshDetailsInsert {
       id: Db.auto,
       sesh_id: sesh_id,
       wind_avg: avg,
@@ -197,12 +61,10 @@ wind_insert_from_normalized (n, sesh_id) = case (
   (False, _, _, _) -> Nothing
 }
 
-fun sesh_gear_insert_from_normalized : (Normalized, Int)
-  -> List SeshGearInsertRow
 sesh_gear_insert_from_normalized (n, sesh_id) = {
   n
   |> Gear.gear_ids
-  |> List.map (fun gear_id -> SeshGearInsertRow {
+  |> List.map (fun gear_id -> SeshGearInsert {
     id: Db.auto,
     sesh_id: sesh_id,
     gear_id: gear_id,
@@ -210,22 +72,16 @@ sesh_gear_insert_from_normalized (n, sesh_id) = {
 }
 
 #@ Inserts all base seshes and zips into a tuple paired with its inserted id
-fun insert_seshes : List SeshesRowInsert -> Result (List Int) DbError
-  needs {Db.Repo, DbCtx}
 insert_seshes rows = {
   let connection = conn! ()
-  let prepared =
-    Db.insert_all_returning seshes rows (fun s -> { id: s.id })
-    |> Db.into (fun row -> row.id)
-  let res = Db.all connection prepared
-  res
+
+  Db.insert_all_returning seshes_table rows (fun s -> { id: s.id })
+  |> Db.into (fun row -> row.id)
+  |> Db.all connection
 }
 
-fun identity : a -> a
 identity x = x
 
-fun insert_wind_details : List (Normalized, Int) -> Result Int DbError
-  needs {Db.Repo, DbCtx}
 insert_wind_details items = {
   let to_insert =
     items
@@ -233,20 +89,18 @@ insert_wind_details items = {
     |> List.filter_map identity
 
   let connection = conn! ()
-  let prepared = Db.insert_all wind_sesh_details to_insert
-  let res = Db.exec connection prepared
-  res
+
+  Db.insert_all wind_sesh_details_table to_insert
+  |> Db.exec connection
 }
 
-fun insert_gear : List (Normalized, Int) -> Result Int DbError
-  needs {Db.Repo, DbCtx}
 insert_gear items = {
-  let to_insert = List.flat_map sesh_gear_insert_from_normalized items
-
   let connection = conn! ()
-  let prepared = Db.insert_all sesh_gear to_insert
-  let res = Db.exec connection prepared
-  res
+
+  items
+  |> List.flat_map sesh_gear_insert_from_normalized
+  |> Db.insert_all sesh_gear_table
+  |> Db.exec connection
 }
 
 db_config =

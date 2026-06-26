@@ -1,0 +1,66 @@
+module SeshImporter.Db.WindSeshDetails
+
+import Kraken.Core (
+  Generated,
+  Col,
+  col,
+  ColumnSet,
+  Selectable,
+  Insertable,
+  ColumnNameMap
+)
+import Kraken.Db ()
+
+pub fun wind_sesh_details_table : Db.Table WindSeshDetailsRow
+wind_sesh_details_table = Db.table "wind_sesh_details"
+
+pub type SeshType =
+  | Spot
+  | Downwinder
+  | Roundwinder
+  deriving (Debug)
+
+pub record WindSeshDetails {
+  wind_avg: Int,
+  wind_gust: Int,
+  sesh_type: SeshType,
+}
+
+pub record WindSeshDetailsRow {
+  id: Generated Int,
+  sesh_id: Col Int,
+  wind_avg: Col Int,
+  wind_gust: Col Int,
+  sesh_type: Col SeshType,
+} deriving (Selectable WindSeshDetails, Insertable WindSeshDetailsInsert, Core.ColumnNameMap)
+
+impl ColumnSet for WindSeshDetailsRow {
+  primary_key wd = Db.key wd.id
+  columns source = WindSeshDetailsRow {
+    id: Db.generated "id" source,
+    sesh_id: col "sesh_id" source,
+    wind_avg: col "wind_avg" source,
+    wind_gust: col "wind_gust" source,
+    sesh_type: col "sesh_type" source,
+  }
+}
+
+impl Db.PgType for SeshType {
+  encode_pg value =
+    Db.encode_value (case value {
+      Spot -> "spot"
+      Downwinder -> "downwinder"
+      Roundwinder -> "roundwinder"
+    })
+
+  decode_pg = Db.decode_via (fun value -> case value {
+    "spot" -> Ok Spot
+    "downwinder" -> Ok Downwinder
+    "roundwinder" -> Ok Roundwinder
+    other -> Err $"unknown sport type {other}"
+  })
+}
+
+impl Db.InsertCol for SeshType {
+  insert_col value = Just (Db.encode_value value)
+}

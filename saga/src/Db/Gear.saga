@@ -1,0 +1,39 @@
+module SeshImporter.Db.Gear
+
+import Kraken.Core (
+  Generated,
+  Col,
+  col,
+  ColumnSet,
+  Selectable,
+  Insertable,
+  ColumnNameMap
+)
+import Kraken.Db
+
+# Not used in this script; gear is never selected
+# pub record Gear { }
+
+pub fun sesh_gear_table : Db.Table SeshGearRow
+sesh_gear_table = Db.table "sesh_gear"
+
+pub record SeshGear {
+  id: Int,
+  sesh_id: Int,
+  gear_id: Int,
+}
+
+pub record SeshGearRow {
+  id: Generated Int,
+  sesh_id: Col Int,
+  gear_id: Col Int,
+} deriving (Selectable SeshGear, Insertable SeshGearInsert, ColumnNameMap)
+
+impl ColumnSet for SeshGearRow {
+  primary_key sg = Db.key sg.id
+  columns source = SeshGearRow {
+    id: Db.generated "id" source,
+    sesh_id: col "sesh_id" source,
+    gear_id: col "gear_id" source,
+  }
+}
