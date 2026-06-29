@@ -116,7 +116,11 @@ wingId (sport, day, size) = case (sport, size) of
   (WingFoiling, "4m")
     | before "2024-01-01" day -> Just 37
     | after "2024-01-01" day -> Just 40
-  (Parawinging, "4m") -> Just 42
+  (Parawinging, "4m")
+    | before "2026-06-28" day -> Just 42
+    | after "2026-06-29" day -> Just 48
+  (Parawinging, "3m")
+    | after "2026-06-29" day -> Just 49
   (_, "5.5m") -> Just 38
   (_, "3m") -> Just 41
   _ -> Nothing

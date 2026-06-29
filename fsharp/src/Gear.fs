@@ -51,6 +51,7 @@ let private deriveBoardId date boardName boardType =
         | Some "Rocket 60L" -> Some 34
         | Some "Flying Fish 40L" -> Some 33
         | Some "LF Galaxy" -> Some 30
+        | Some "Cruzader 72L" -> Some 47
         | None when between ("2017-06-24", "2022-08-09") date -> Some 30
         | None when before "2017-06-23" date -> Some 17
         | _ -> None
@@ -106,7 +107,9 @@ let private deriveWingId sport d size =
     | WingFoiling, "4m" when after "2024-01-01" d -> Some 40
     | WingFoiling, "5.5m" -> Some 38
     | WingFoiling, "3m" -> Some 41
-    | Parawinging, "4m" -> Some 42 // We'll just throw the parawing in here
+    | Parawinging, "4m" when before "2026-06-28" d -> Some 42 // Old parawing, retired 2026-06-29
+    | Parawinging, "4m" when after "2026-06-29" d -> Some 48
+    | Parawinging, "3m" when after "2026-06-29" d -> Some 49
     | _ -> None
 
 let wingIds sesh =

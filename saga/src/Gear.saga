@@ -115,7 +115,9 @@ derive_wing_id sport date size = case (sport, size) {
   (WingFoiling, "4m") when date >= mk 2024 1 1 -> Just 40
   (WingFoiling, "5.5m") -> Just 38
   (WingFoiling, "3m") -> Just 41
-  (Parawinging, "4m") -> Just 42
+  (Parawinging, "4m") when date <= mk 2026 6 28 -> Just 42
+  (Parawinging, "4m") when date >= mk 2026 6 29 -> Just 48
+  (Parawinging, "3m") when date >= mk 2026 6 29 -> Just 49
   _ -> Nothing
 }
 

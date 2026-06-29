@@ -117,6 +117,8 @@ function boardId(
         return 33;
       case "LF Galaxy":
         return 30;
+      case "Cruzader 72L":
+        return 47;
       case null:
         if (between("2017-06-24", "2022-08-09", date)) return 30;
         if (before("2017-06-23", date)) return 17;
@@ -156,11 +158,18 @@ function wingId(sport: Sport, day: Date, size: string): number | null {
     case "5m":
       return before("2024-01-01", day) ? 36 : 39;
     case "4m":
-      if (sport === "parawinging") return 42;
+      if (sport === "parawinging") {
+        if (before("2026-06-28", day)) return 42;
+        if (after("2026-06-29", day)) return 48;
+        return null;
+      }
       return before("2024-01-01", day) ? 37 : 40;
     case "5.5m":
       return 38;
     case "3m":
+      if (sport === "parawinging") {
+        return after("2026-06-29", day) ? 49 : null;
+      }
       return 41;
     default:
       return null;

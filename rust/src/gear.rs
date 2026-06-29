@@ -140,7 +140,9 @@ fn derive_wing_id(sport: &Sport, date: NaiveDate, size: &str) -> Option<i32> {
         (WingFoiling, "4m") if after("2024-01-01", date) => Some(40),
         (WingFoiling, "5.5m") => Some(38),
         (WingFoiling, "3m") => Some(41),
-        (Parawinging, "4m") => Some(42), // We'll just throw the parawing in here
+        (Parawinging, "4m") if before("2026-06-28", date) => Some(42),
+        (Parawinging, "4m") if after("2026-06-29", date) => Some(48),
+        (Parawinging, "3m") if after("2026-06-29", date) => Some(49),
         _ => None,
     }
 }

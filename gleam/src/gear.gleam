@@ -126,6 +126,7 @@ fn derive_board_id(
         GearRule("Rocket 60L", True, 34),
         GearRule("Flying Fish 40L", True, 33),
         GearRule("LF Galaxy", True, 30),
+        GearRule("Cruzader 72L", True, 47),
         GearRule("", between("2017-06-24", "2022-08-09", sesh_date), 30),
         GearRule("", before("2017-06-23", sesh_date), 17),
       ]
@@ -160,7 +161,11 @@ fn derive_wing_id(sport: Sport, sesh_date: Time, size: String) -> Option(Int) {
     GearRule("3m", True, 41),
   ]
 
-  let parawings = [GearRule("4m", True, 42)]
+  let parawings = [
+    GearRule("4m", before("2026-06-28", sesh_date), 42),
+    GearRule("4m", after("2026-06-29", sesh_date), 48),
+    GearRule("3m", after("2026-06-29", sesh_date), 49),
+  ]
 
   case sport {
     WingFoiling -> wings
