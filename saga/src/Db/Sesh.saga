@@ -1,16 +1,7 @@
 module SeshImporter.Db.Sesh
 
 import Std.DateTime (Date)
-import Kraken.Core (
-  Generated,
-  Col,
-  Selectable,
-  Insertable,
-  ColumnNameMap,
-  ColumnSet,
-  PgType,
-  InsertCol
-)
+import Kraken.Core (Generated, Col, ColumnSet, PgType)
 import Kraken.Db (key, generated, col, encode_value, decode_via)
 
 pub fun seshes_table : Db.Table SeshRow
@@ -47,7 +38,7 @@ pub record SeshRow {
   duration_seconds: Col Int,
   location_name: Col (Maybe String),
   comments: Col (Maybe String),
-} deriving (Selectable Sesh, Insertable SeshInsert, ColumnNameMap)
+}
 
 impl ColumnSet for SeshRow {
   primary_key s = key s.id
@@ -78,7 +69,7 @@ impl PgType for Sport {
       Parawinging -> "parawinging"
     })
 
-  decode_pg value = decode_via (fun value -> case value {
+  decode_pg = decode_via (fun value -> case value {
     "kiteboarding" -> Ok Kiteboarding
     "sup" -> Ok Sup
     "skiing" -> Ok Skiing
@@ -92,8 +83,4 @@ impl PgType for Sport {
     "parawinging" -> Ok Parawinging
     other -> Err $"unknown sport: {other}"
   })
-}
-
-impl InsertCol for Sport {
-  insert_col value = Just (encode_value value)
 }

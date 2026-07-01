@@ -1,14 +1,6 @@
 module SeshImporter.Db.Gear
 
-import Kraken.Core (
-  Generated,
-  Col,
-  col,
-  ColumnSet,
-  Selectable,
-  Insertable,
-  ColumnNameMap
-)
+import Kraken.Core (Generated, Col, col, ColumnSet)
 import Kraken.Db
 
 # Not used in this script; gear is never selected
@@ -27,7 +19,7 @@ pub record SeshGearRow {
   id: Generated Int,
   sesh_id: Col Int,
   gear_id: Col Int,
-} deriving (Selectable SeshGear, Insertable SeshGearInsert, ColumnNameMap)
+}
 
 impl ColumnSet for SeshGearRow {
   primary_key sg = Db.key sg.id

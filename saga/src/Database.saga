@@ -3,14 +3,23 @@ module SeshImporter.Database
 import Std.DateTime (Date)
 import Std.Dynamic (decode_element, int)
 import Std.Fail (Fail)
-import Kraken.Core (ColumnSet, Selectable, Insertable)
-import Kraken.Db (table, Generated, Col, col, DbError, Rollback, Transaction)
+import Kraken.Db (
+  table,
+  Generated,
+  Col,
+  col,
+  DbError,
+  Rollback,
+  Transaction,
+  insert_generated,
+  insert_auto
+)
 import SagaPgo (Connection, default_config, connect, pg_transaction, pg)
 import SagaPgo.Types (pg_int, pg_text, pg_date, maybe_null)
-import SeshImporter.Db.Gear (SeshGearInsert, sesh_gear_table)
-import SeshImporter.Db.Sesh (Sport, Sesh, SeshRow, SeshInsert, seshes_table)
+import SeshImporter.Db.Gear (SeshGearRow, sesh_gear_table)
+import SeshImporter.Db.Sesh (Sport, Sesh, SeshRow, seshes_table)
 import SeshImporter.Db.WindSeshDetails (
-  WindSeshDetailsInsert,
+  WindSeshDetailsRow,
   wind_sesh_details_table
 )
 import SeshImporter.Gear
@@ -29,68 +38,69 @@ is_wind_sport sport = case sport {
   _ -> False
 }
 
-fun sesh_insert_from_normalized : Normalized -> SeshInsert
-sesh_insert_from_normalized n = SeshInsert {
-  id: Db.auto,
-  user_id: 1,
-  date: n.date,
-  sport: n.sport,
-  duration_seconds: hours_to_seconds n.hours,
-  location_name: n.location,
-  comments: n.comments,
-}
+fun build_insertable_sesh : Normalized -> Db.InsertOf SeshRow
+build_insertable_sesh n =
+  build Db.Insert SeshRow {
+    id: Db.insert_auto,
+    user_id: Db.insert_value 1,
+    date: Db.insert_value n.date,
+    sport: Db.insert_value n.sport,
+    duration_seconds: Db.insert_value (hours_to_seconds n.hours),
+    location_name: Db.insert_value n.location,
+    comments: Db.insert_value n.comments,
+  }
 
 # Validates wind sports have required wind details, rolling back the
 # transaction on a wind sport that's missing them.
 # Non-wind sports always have no wind details.
-fun wind_insert_from_normalized : (Normalized, Int)
-  -> Maybe WindSeshDetailsInsert needs {Rollback}
-wind_insert_from_normalized (n, sesh_id) = case (
+fun buils_insertable_wind_details : (Normalized, Int)
+  -> Maybe (Db.InsertOf WindSeshDetailsRow)
+  needs {Rollback}
+buils_insertable_wind_details (n, sesh_id) = case (
   is_wind_sport n.sport,
   n.wind_avg,
   n.wind_gust,
   n.sesh_type,
 ) {
   (True, Just avg, Just gust, Just st) ->
-    Just (WindSeshDetailsInsert {
-      id: Db.auto,
-      sesh_id: sesh_id,
-      wind_avg: avg,
-      wind_gust: gust,
-      sesh_type: st,
-    })
+    Just build Db.Insert WindSeshDetailsRow {
+      id: Db.insert_auto,
+      sesh_id: Db.insert_value sesh_id,
+      wind_avg: Db.insert_value avg,
+      wind_gust: Db.insert_value gust,
+      sesh_type: Db.insert_value st,
+    }
   (True, _, _, _) -> rollback! $"wind sport missing wind data: {debug n}"
   (False, _, _, _) -> Nothing
 }
 
-sesh_gear_insert_from_normalized (n, sesh_id) = {
+build_insertable_sesh_gear (n, sesh_id) = {
   n
   |> Gear.gear_ids
-  |> List.map (fun gear_id -> SeshGearInsert {
-    id: Db.auto,
-    sesh_id: sesh_id,
-    gear_id: gear_id,
-  })
+  |> List.map (fun gear_id ->
+    build Db.Insert SeshGearRow {
+      id: Db.insert_auto,
+      sesh_id: Db.insert_value sesh_id,
+      gear_id: Db.insert_value gear_id,
+    })
 }
 
 #@ Inserts all base seshes and zips into a tuple paired with its inserted id
 insert_seshes rows = {
   let connection = conn! ()
-
-  Db.insert_all_returning seshes_table rows (fun s -> { id: s.id })
-  |> Db.into (fun row -> row.id)
+  Db.insert_all_returning seshes_table rows (fun s -> Db.read s.id)
   |> Db.all connection
 }
 
 identity x = x
 
 insert_wind_details items = {
+  let connection = conn! ()
+
   let to_insert =
     items
-    |> List.map wind_insert_from_normalized
+    |> List.map buils_insertable_wind_details
     |> List.filter_map identity
-
-  let connection = conn! ()
 
   Db.insert_all wind_sesh_details_table to_insert
   |> Db.exec connection
@@ -100,7 +110,7 @@ insert_gear items = {
   let connection = conn! ()
 
   items
-  |> List.flat_map sesh_gear_insert_from_normalized
+  |> List.flat_map build_insertable_sesh_gear
   |> Db.insert_all sesh_gear_table
   |> Db.exec connection
 }
@@ -114,7 +124,7 @@ insert_records items = {
 
   let result = Db.transaction db_conn (fun () -> {
     do {
-      insertable_seshes <- List.map sesh_insert_from_normalized items
+      insertable_seshes <- List.map build_insertable_sesh items
       Ok sesh_ids <- insert_seshes insertable_seshes
       with_ids <- List.zip items sesh_ids
       Ok wind_count <- insert_wind_details with_ids
